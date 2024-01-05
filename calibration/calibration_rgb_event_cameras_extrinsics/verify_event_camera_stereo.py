@@ -1,3 +1,7 @@
+'''
+Verifz that both event camera are correctlz calibrated
+'''
+
 import cv2
 import numpy as np
 
