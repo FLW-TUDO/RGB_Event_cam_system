@@ -1,0 +1,52 @@
+label: "DVXplorer"
+id: dvxplorer-example
+cameras:
+- camera:
+    label: dvs
+    id: 0
+    line-delay-nanoseconds: 0
+    image_height: 480
+    image_width: 640
+    type: pinhole
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [655.9240927704114, 656.5411643147129, 323.3657769131688, 247.60525881313808]
+    distortion:
+      type: radial-tangential
+      parameters:
+        cols: 1
+        rows: 4
+        data: [-0.36895311129408015, 0.15654334549017543, 0.002178328393214335, -0.0020184462785062312]
+  T_B_C:		# transformation matrix from cam0 to imu
+    cols: 4
+    rows: 4
+    data: [0.9998170561160942, -0.009011263862443787, -0.016871615896169864, 0.01963915444623496,
+           0.008635096432628801, 0.9997154235749117, -0.02223751281132133, 0.025089331837700807,
+           0.017067202727619964, 0.022087756564121527, 0.9996103448849547, -0.03839004671021427,
+           0.0, 0.0, 0.0, 1.0]
+- camera:
+    label: standard
+    id: 1
+    line-delay-nanoseconds: 0
+    image_height: 180
+    image_width: 240
+    type: pinhole
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [197.8896180156088, 197.77682212558196, 130.67973405379294, 111.1614965931138]
+    distortion:
+      type: equidistant
+      parameters:
+        cols: 1
+        rows: 4
+        data: [-0.07990900260889204, 0.14676572847248792, -0.23207155168801544,
+    0.13338013034315513]
+  T_B_C:
+    cols: 4
+    rows: 4
+    data: [0.99992201, -0.01064369, -0.00653412,  0.00064629,
+         0.01064543,  0.99994331,  0.00023224,  0.0094547,
+         0.00653128, -0.00030178,  0.99997863,  0.05058314,
+          0.0, 0.0, 0.0, 1.0]
