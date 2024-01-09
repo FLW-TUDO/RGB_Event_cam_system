@@ -10,7 +10,11 @@ import json
 from scipy.spatial.transform import Rotation as R
 
 
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration'
+# verify calibration
+
+#############  Define Paths and Parameters #############
+square_size_cm = 5
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/second_calib'
 checker_board_size = (10, 7)
 params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
 distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
@@ -20,19 +24,21 @@ camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], 
 
 images_path = os.path.join(data_path, 'images')
 num_of_images = len(os.listdir(images_path))
+###############
 
-objp = np.zeros((checker_board_size[0]*checker_board_size[1], 3), np.float32)
+objp = np.zeros((checker_board_size[0] * checker_board_size[1], 3), np.float32)
 objp[:, :2] = np.mgrid[0:checker_board_size[0], 0:checker_board_size[1]].T.reshape(-1, 2)
+objp = objp * 0.05  # convert to meters
 
-objpoints = [] # 3d point in real world space
-imgpoints = [] # 2d points in image plane.
+objpoints = []  # 3d point in real world space
+imgpoints = []  # 2d points in image plane.
 
 # termination criteria
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.001)
 
 # iterate over images to get checkboard transformation
 for img_id in range(num_of_images):
-    img_path = os.path.join(images_path, str(img_id)+'.png')
+    img_path = os.path.join(images_path, str(img_id) + '.png')
     img = cv2.imread(img_path)
 
     # undistort image using camera matrix and distortion coefficients
@@ -40,20 +46,25 @@ for img_id in range(num_of_images):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # find the chess board corners
     ret, corners = cv2.findChessboardCorners(gray, checker_board_size, None)
+    # TODO check if we need to undistort image
+
+
     # if found, add object points, image points (after refining them)
     if ret == True:
         # refine corners
-        corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
+        corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
         # draw and display the corners
         img = cv2.drawChessboardCorners(img, checker_board_size, corners2, ret)
-        #cv2.imshow('img', img)
+        # draw image resized to fit screen
+        #cv2.imshow('img', cv2.resize(img, (0, 0), fx=0.5, fy=0.5))
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
         objpoints.append(objp)
         imgpoints.append(corners2)
 
 # calibrate camera
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], camera_matrix, distortion_coefficients)
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], camera_matrix,
+                                                   distortion_coefficients)
 
 # TODO we need to have tvects in meters
 
@@ -75,7 +86,7 @@ t_b_g_vecs = []
 for i in range(len(data)):
     translation = data[str(i)]['translation']
     rotation = data[str(i)]['rotation']
-    R_g_b_quaternion = np.array(rotation)
+    R_g_b_quaternion = np.array(rotation)      # R_g_b means from base to gripper
     # convert quaternion to rotation matrix using Scipy
     R_g_b = R.from_quat(R_g_b_quaternion).as_matrix()
 
@@ -83,7 +94,7 @@ for i in range(len(data)):
 
     R_b_g = np.transpose(R_g_b)
     # convert rotation matrix to Rodrigues
-    #R_b_g, _ = cv2.Rodrigues(R_b_g)
+    # R_b_g, _ = cv2.Rodrigues(R_b_g)
     t_b_g = -np.matmul(np.transpose(R_g_b), t_g_b)
     R_b_g_vecs.append(R_b_g)
     t_b_g_vecs.append(t_b_g)
@@ -92,8 +103,19 @@ t_b_g_vecs = np.array(t_b_g_vecs)
 
 # calculate the eye in hand calibration
 R_g_c, t_g_c = cv2.calibrateHandEye(R_b_g_vecs, t_b_g_vecs, R_c_t_vecs, t_c_t_vecs, cv2.CALIB_HAND_EYE_TSAI)
+#print('R_g_c: ', R_g_c)
+#print('t_g_c: ', t_g_c)
 
-print('R_g_c: ', R_g_c)
-print('t_g_c: ', t_g_c)
+# compute R_c_g and t_c_g
+R_c_g = np.transpose(R_g_c)
+t_c_g = -np.matmul(np.transpose(R_g_c), t_g_c)
 
+# homogenous calibration matrix
+calibration_matrix_g_c = np.concatenate((R_g_c, t_g_c), axis=1)
+calibration_matrix_g_c = np.concatenate((calibration_matrix_g_c, np.array([[0, 0, 0, 1]])), axis=0)
+print('calibration_matrix:')
+print(calibration_matrix_g_c)
+
+# verify calibration
+#error = verify_calibration(R_c_g, t_c_g)
 
