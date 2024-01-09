@@ -1,6 +1,5 @@
 This is a ROS package containing launch files, calibration and documentation
-to run ultimate SLAM using our DVXplorer camera.
-The ultimate SLAM will run only using event camera and it is internal IMU
+for executing algorithms using one RGB camera and 2 event camera setup.
 
 ## Requirments
 [e2calib package](https://github.com/uzh-rpg/e2calib) needs to be installed first to be able to
@@ -24,94 +23,54 @@ Install this in a workspace and make sure the workspace is sources
 
 ## event camera calibration
 
-Launch event camera with ROS from a launch file in this package:
+Launch one RGb and two event cameras with ROS from a launch file in this package:
 
-     roslaunch flw_uslam_launcher event_cam_only.launch
+     roslaunch RGB_event_cam_stereo.launch.launch
 
-first the event camera itself needs to be calibrated.
-To do this first collect a ROS bag with event only and move the checkerboard slowly
-in front of the camera covering all the image sides.
+Record a ROS bag file by keeping the cameras stationtry and moving a checkerboard 
+in front of the cameras. Make sure to cover the entire frame.
 
      mkdir ~/event_camera/calibration_data/events_only_calibration
      cd ~/event_camera/calibration_data/events_only_calibration
-     rosbag record /dvs/events --output-name events_only.bag
+     rosbag record /dvxplorer_left/events /dvxplorer_left/events /rgb/image_raw --output-name events_only.bag
 
-Then run the "convert.py" then the "offline_reconstruction.py" scripts from the e2calib package.
+Then run the "convert.py" and finally the "offline_reconstruction.py" scripts from the e2calib package.
 
      cd ~/event_camera/e2calib
-     python python/convert.py --output_file ~/event_camera/calibration_data/events_only_calibration/events.h5 --topic /dvs/events ~/event_camera/calibration_data/events_only_calibration/events_only.bag
-     python python/offline_reconstruction.py --h5file ~/event_camera/calibration_data/events_only_calibration/events.h5 --freq_hz 20 --output_folder ~/event_camera/calibration_data/events_only_calibration/reconstructed_event_images --use_gpu
+     python /home/eventcamera/e2calib/python/convert.py --output_file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_left.h5 --topic '/dvxplorer_left/events' 
+     --input_file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_only.bag 
+
+     python /home/eventcamera/e2calib/python/convert.py --output_file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_right.h5 --topic '/dvxplorer_right/events' 
+     --input_file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_only.bag 
+
+     python /home/eventcamera/e2calib/python/offline_reconstruction.py --h5file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_right.h5 --freq_hz 90 
+     --output_folder /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images --use_gpu
+     mv /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/e2calib/ /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam2 
+ 
+     python /home/eventcamera/e2calib/python/offline_reconstruction.py --h5file /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/events_left.h5 --freq_hz 90 
+     --output_folder /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images --use_gpu
+     mv /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/e2calib/ /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam1 
+
+Extract RGB image from bag file by executing the script in folder RGB_Event_cam_system/calibration/calibration_rgb_event_cameras_extrinsics/
+     python RGB_Event_cam_system/calibration/calibration_rgb_event_cameras_extrinsics/extract_rgb_img_from_bag.py
+The RGB images will be extracted to folder cam0
+
+Source kalibr workspace:
+     source /home/eventcamera/kalibr_ws/devel/setup.bash
+Go to folder cd RGB_stereo_event
 
 The calibration can be performed using kalibr. Kalibr reads the images from a ROS bag.
 So the reconstructed event images have to converted to a ROS bag using this command:
-
-Note: remove sourcing of uslam workspace from the "~/.bashrc" as you won't find Kalibr if uslam is sourced. Why? IDK
-
-     cd ~/event_camera/calibration_data/events_only_calibration/
-     mv reconstructed_event_images/e2calib/ reconstructed_event_images/cam0
-     source ~/kalibr_workspace/devel/setup.bash
      rosrun kalibr kalibr_bagcreater --folder reconstructed_event_images/ --output-bag images.bag
      rosrun kalibr kalibr_calibrate_cameras \
- 	      --target ../checkerboard.yaml \
- 	      --models pinhole-radtan \
- 	      --topics /cam0/image_raw \
- 	      --bag images.bag \
- 	      --bag-freq 10.0
+      --target ../checkerboard.yaml \
+      --models omni-radtan pinhole-radtan omni-radtan \
+      --topics /cam0/image_raw /cam1/image_raw /cam2/image_raw \
+      --bag images.bag \
+      --bag-freq 10.0 \
+      --verbose
+NOTE: For our case the model for dvxplorer event camera is omni radtan. But this can defer based on the lens that is used with camera.
 
-## Event IMU calibration
+## Common Errors
 
-Install this python package:
-
-     pip install rosbag-merge
-
-In this calibration, the camera moves and the checkerboard is fixed.
-First collect a data of the event and the IMU:
-
-     mkdir ~/event_camera/calibration_data/events_imu_calibration
-     cd ~/event_camera/calibration_data/events_imu_calibration
-     rosbag record /dvs/events /dvs/imu --output-name events_imu.bag
-
-same as above run e2calib:
-
-     cd ~/event_camera/e2calib
-     python python/convert.py --output_file ~/event_camera/calibration_data/events_imu_calibration/events_imu.h5 --topic /dvs/events ~/event_camera/calibration_data/events_imu_calibration/events_imu.bag
-     python python/offline_reconstruction.py --h5file ~/event_camera/calibration_data/events_imu_calibration/events_imu.h5 --freq_hz 20 --output_folder ~/event_camera/calibration_data/events_imu_calibration/reconstructed_event_images --use_gpu
-
-prepare bags for imu camera calibration:
-
-     cd ~/event_camera/calibration_data/events_imu_calibration/
-     mv reconstructed_event_images/e2calib/ reconstructed_event_images/cam0
-     source ~/kalibr_workspace/devel/setup.bash
-     rosrun kalibr kalibr_bagcreater --folder reconstructed_event_images/ --output-bag images.bag
-     rosbag-merge --topics /dvs/imu /cam0/image_raw --input_paths . --output_path . --outbag_name images_imu
-
-running Kalibr to :
-
-     rosrun kalibr kalibr_calibrate_imu_camera \
-          --target ../checkerboard.yaml \
-          --bag images_imu.bag \
-          --cam ../events_only_calibration/images-camchain.yaml \
-          --imu /home/gouda/uslam_ws/src/rpg_ultimate_slam_open/calibration/imu/dvxplorer_BMI160.yaml \
- 	      --bag-freq 1.0 \
-          --verbose
-
-## running USLAM
-
-roslaunch ze_vio_ceres live_DAVIS240C_events_only.launch camera_name:=DVXplorer timeshift_cam_imu:=-0.00015514753826769825 #0.010361079926317417 #-0.001984034119291302
-
-catkin config \
-     --init --mkdirs --extend /opt/ros/noetic \
-     --merge-devel --cmake-args \
-     -DCMAKE_BUILD_TYPE=Release
-
-     msg.linear_acceleration.x = acc_ms[0][0]*Bias_correction[0][0] + acc_ms[0][1]*Bias_correction[1][0] + acc_ms[0][2]*Bias_correction[2][0];
-						msg.linear_acceleration.y = acc_ms[1][0]*Bias_correction[0][0] + acc_ms[1][1]*Bias_correction[1][0] + acc_ms[1][2]*Bias_correction[2][0];
-						msg.linear_acceleration.z = acc_ms[2][0]*Bias_correction[0][0] + acc_ms[2][1]*Bias_correction[1][0] + acc_ms[2][2]*Bias_correction[2][0];
-
-
-Bias of gyroscope are changedd in frontend_base.cpp.
-Acceleremeter values are corrected in driver.cpp
-
-Execute C++ scipts
-g++ test_camera.cpp -o test_camera $(pkg-config --cflags --libs /usr/lib/x86_64-linux-gnu/pkgconfig/opencv4.pc)
-./test_camera
+If you get an error sayng Optimization failed the please increase the timeOffsetPadding in line 97 of kalibr_calibrate_imu_camera.py file. timeOffsetPadding is the margin within which the temporal offset is allowed to vary. Varying this parameter is a trade-off between computation time and robustness. If the margin is large, it will result in increased computation time, if it is too low, the estimate might travel across knot boundaries in an unpredicted manner, violating the precomputed sparsity pattern. Temporal offset during optimization depend on trajectory of the motion of the checkerboard pattern during calibration.
