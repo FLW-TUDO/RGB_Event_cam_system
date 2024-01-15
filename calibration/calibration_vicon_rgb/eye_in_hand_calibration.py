@@ -80,8 +80,6 @@ for i in range(len(data)):
     translation = data[str(i)]['translation']
     rotation = data[str(i)]['rotation']
     R_base_2_vicon_cam_quaternion = np.array(rotation)
-    # R_base_2_vicon_cam_quaternion = np.array([R_base_2_vicon_cam_quaternion[3], R_base_2_vicon_cam_quaternion[0],
-    #                                         R_base_2_vicon_cam_quaternion[1], R_base_2_vicon_cam_quaternion[2]])
     # convert quaternion to rotation matrix using Scipy
     R_base_2_vicon_cam = R.from_quat(R_base_2_vicon_cam_quaternion).as_matrix()
     t_base_2_vicon_cam = np.array(translation)
@@ -100,7 +98,7 @@ R_viconCam_2_cam_optical, t_viconCam_2_cam_optical = cv2.calibrateHandEye(R_base
 # homogenous gripper to camera
 H = np.concatenate((R_viconCam_2_cam_optical, t_viconCam_2_cam_optical), axis=1)
 H = np.concatenate((H, np.array([[0, 0, 0, 1]])), axis=0)
-print('H = ')
+print('H_viconCam_2_cam_optical = ')
 print(H)
 
 
