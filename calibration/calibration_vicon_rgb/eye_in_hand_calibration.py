@@ -13,10 +13,10 @@ from scipy.spatial.transform import Rotation as R
 square_size_meter = 0.05
 data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/second_calib'
 checker_board_size = (10, 7)
-# params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
-# distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
-params = [1936.8622, 1933.3, 985.7, 771]
-distortion_coefficients = np.array([-0.12905658, -0.01019267, 0.00562304, -0.00015354, 0.13542021])
+params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
+distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
+#params = [1936.8622, 1933.3, 985.7, 771]
+#distortion_coefficients = np.array([-0.12905658, -0.01019267, 0.00562304, -0.00015354, 0.13542021])
 
 json_path = os.path.join(data_path, 'vicon_coordinates.json')
 camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
@@ -67,10 +67,8 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 tvecs = np.array(tvecs) * square_size_meter
 # iterate over the length of tvecs and rvecs
 R_cam_optical_2_target_vecs = np.array(rvecs)
-# TODO maybe we should change the rvecs from Rodrigues to rotation matrix
 t_cam_optical_2_target_vecs = np.array(tvecs)
 
-# get transformation from base to gripper
 # read the json file
 with open(json_path, 'r') as f:
     data = json.load(f)
