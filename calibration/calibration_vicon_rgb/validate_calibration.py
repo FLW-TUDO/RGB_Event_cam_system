@@ -6,14 +6,14 @@ from scipy.spatial.transform import Rotation as R
 
 # make sample expected values for the translation matrix from vicon camera to vicon optical frame
 #H_cam_vicon_2_cam_optical = np.array([
-#    [ 0,   0,  1,  0.02],
+#    [ 0,   0,  1,  0.03],
 #    [-1,   0,  0,  0.04],
 #    [ 0,  -1,  0,  -0.045],
 #    [ 0,   0,  0,  1]])
 H_cam_vicon_2_cam_optical = np.array([
-                                     [-9.12530750e-03, - 1.08164565e-02,  9.99899862e-01,  -0.20431627],
-                                     [-9.99946116e-01, - 4.85033329e-03, - 9.17819830e-03,  0.02960353],
-                                     [4.94912316e-03, - 9.99929737e-01, - 1.07716128e-02,   0.13735649],
+                                     [-9.12530750e-03, - 1.08164565e-02,  9.99899862e-01,  0.0204],
+                                     [-9.99946116e-01, - 4.85033329e-03, - 9.17819830e-03,  0.04],
+                                     [4.94912316e-03, - 9.99929737e-01, - 1.07716128e-02,   -0.04],
                                      [ 0.,          0.,          0.,          1.  ]
                             ])
 
@@ -51,22 +51,22 @@ H_cam_optical_2_vicon[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, 
 
 # make point of verification
 H_v_2_point = np.array([
-    [ 1,  0,  0,  0],
-    [0,  1,  0,   0],
+    [ 1,  0,  0,  -0.58],
+    [0,  1,  0,   0.122],
     [ 0, 0,  1,  0],
     [ 0,  0,  0,  1]])
 # transform the point to the camera optical frame
-H_cam_o_2_point = np.matmul(H_cam_optical_2_vicon, H_v_2_point)
+H_cam_optical_2_point = np.matmul(H_cam_optical_2_vicon, H_v_2_point)
 
 #H_point_2_cam_o = np.eye(4)
 #H_point_2_cam_o[:3, :3] = np.transpose(H_cam_o_2_point[:3, :3])
 #H_point_2_cam_o[:3, 3] = -np.matmul(np.transpose(H_cam_o_2_point[:3, :3]), H_cam_o_2_point[:3, 3])
 # get the 3d point
-t_cam_o_2_point = H_cam_o_2_point[:3, 3]
+t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
 #t_point_2_cam_o = H_point_2_cam_o[:3, 3]
 
 # Project 3D points to image plane
-points_2d = cv2.projectPoints(t_cam_o_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
+points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
 # get pixel values and round them
 points_2d = np.round(points_2d[0]).astype(int)
 print(points_2d)
