@@ -6,12 +6,50 @@ import os
 import json
 from scipy.spatial.transform import Rotation as R
 
-# base to camera_vicon transformation. The below values are taken from recorded json file
-translation = [-1.394129520212119, -1.0855489055738885, 1.3968309243307508]
-rotation_quat = [-0.11836236214272157, 0.27876023425709784, 0.28786393737803234, 0.9085248684445238]
+data_path = '/home/eventcamera/Eventcamera/data/'
+json_path_camera = os.path.join(data_path, 'vicon_coordinates_camera.json')
+json_path_object = os.path.join(data_path, 'vicon_coordinates_object.json')
+with open(json_path_camera, 'r') as f:
+    data_camera = json.load(f)
+with open(json_path_object, 'r') as f:
+    data_object = json.load(f)
 
-# get rotation matrix from quaternion
-rotation = R.from_quat(rotation_quat).as_matrix()
+# Transformation matrix obtained from eye in hand calibration
+H_cam_vicon_2_cam_optical = np.array([
+                                     [-9.12530750e-03, - 1.08164565e-02,  9.99899862e-01,  0.0204],
+                                     [-9.99946116e-01, - 4.85033329e-03, - 9.17819830e-03,  0.04],
+                                     [4.94912316e-03, - 9.99929737e-01, - 1.07716128e-02,   -0.04],
+                                     [ 0.,          0.,          0.,          1.  ]
+                            ])
+
+R_base_2_vicon_cam_vecs = []
+t_base_2_vicon_cam_vecs = []
+for i in range(len(data_camera)):
+    translation = data_camera[str(i)]['translation']
+    rotation = data_camera[str(i)]['rotation']
+    R_base_2_vicon_cam_quaternion = np.array(rotation)
+    # convert quaternion to rotation matrix using Scipy
+    R_base_2_vicon_cam = R.from_quat(R_base_2_vicon_cam_quaternion).as_matrix()
+    t_base_2_vicon_cam = np.array(translation)
+    R_base_2_vicon_cam_vecs.append(R_base_2_vicon_cam)
+    t_base_2_vicon_cam_vecs.append(t_base_2_vicon_cam)
+R_base_2_vicon_cam_vecs = np.array(R_base_2_vicon_cam_vecs)
+t_base_2_vicon_cam_vecs = np.array(t_base_2_vicon_cam_vecs)
+
+R_base_2_vicon_object_vecs = []
+t_base_2_vicon_object_vecs = []
+for i in range(len(data_object)):
+    translation = data_object[str(i)]['translation']
+    rotation = data_object[str(i)]['rotation']
+    R_base_2_vicon_object_quaternion = np.array(rotation)
+    # convert quaternion to rotation matrix using Scipy
+    R_base_2_vicon_object = R.from_quat(R_base_2_vicon_object_quaternion).as_matrix()
+    t_base_2_vicon_object = np.array(translation)
+    R_base_2_vicon_object_vecs.append(R_base_2_vicon_object)
+    t_base_2_vicon_object_vecs.append(t_base_2_vicon_object)
+R_base_2_vicon_object_vecs = np.array(R_base_2_vicon_object_vecs)
+t_base_2_vicon_object_vecs = np.array(t_base_2_vicon_object_vecs)
+
 # make homogeneous transformation matrix
 H_base_2_cam_vicon = np.eye(4)
 H_base_2_cam_vicon[:3, :3] = rotation
@@ -21,10 +59,10 @@ H_base_2_cam_vicon[:3, 3] = translation
 H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
 
 # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
-H_cam_optical_2_vicon = np.eye(4)
-H_cam_optical_2_vicon[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
-H_cam_optical_2_vicon[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
-
+#H_cam_optical_2_base = np.eye(4)
+#H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+#H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+t_cam_optical_2_base = np.transpose(H_base_2_cam_optical[:3, :3])
 
 rgb_img_path = "/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam0/1704386799592976847.png"
 event_cam_img = "/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam1/1704386800701017000.png"
@@ -44,9 +82,9 @@ H_cam2_cam1[:3, 3] = [-0.10245441, 0.00011387, 0.00283878]
 
 # project point (x,y,z) in cam0 coordinate to cam1 coordinate
 point_cam0 = np.array([
-    [ 1,  0,  0,  863],
-    [0,  1,  0,   819],
-    [ 0, 0,  1,  0],
+    [ 1,  0,  0,  t_cam_optical_2_base[0]],
+    [0,  1,  0,   t_cam_optical_2_base[1]],
+    [ 0, 0,  1,  t_cam_optical_2_base[2]],
     [ 0,  0,  0,  1]])
 point_cam1 = np.matmul(H_cam1_cam0, point_cam0)
 print(point_cam1)
