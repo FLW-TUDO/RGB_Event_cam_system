@@ -10,9 +10,10 @@ import json
 from scipy.spatial.transform import Rotation as R
 
 #############  Define Paths and Parameters #############
-square_size_meter = 0.05
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/second_calib'
-checker_board_size = (10, 7)
+square_size_meter = 0.125
+image_size = (2048,1526)
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
+checker_board_size = (8, 5)
 params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
 distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
 #params = [1936.8622, 1933.3, 985.7, 771]
@@ -33,7 +34,7 @@ imgpoints = []  # 2d points in image plane.
 
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
+#i = 0
 # iterate over images to get checkerboard transformation
 for img_id in range(num_of_images):
     img_path = os.path.join(images_path, str(img_id) + '.png')
@@ -47,6 +48,7 @@ for img_id in range(num_of_images):
 
     # if found, add object points, image points (after refining them)
     if ret == True:
+        #print(i)
         # refine corners
         corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
         # draw and display the corners
@@ -57,13 +59,14 @@ for img_id in range(num_of_images):
         #cv2.destroyAllWindows()
         objpoints.append(objp)
         imgpoints.append(corners2)
-
+    #i += 1
 # calibrate camera
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], camera_matrix,
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], camera_matrix,
                                                    distortion_coefficients)
 
-# print(mtx, 'dist', dist)
-# convert tvecs from pixels to meters using square size
+#print(mtx, 'dist', dist)
+# convert tvecs from pixels to meters
+# TODO this conversion is not correct
 tvecs = np.array(tvecs) * square_size_meter
 # iterate over the length of tvecs and rvecs
 R_cam_optical_2_target_vecs = np.array(rvecs)

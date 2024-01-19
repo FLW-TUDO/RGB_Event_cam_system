@@ -42,7 +42,7 @@ image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
 vicon_subscriber = rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 
 # Folder to save images
-save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration'
+save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
 os.makedirs(save_folder, exist_ok=True)
 image_dir = os.path.join(save_folder, 'images')
 os.makedirs(image_dir, exist_ok=True)
@@ -57,7 +57,7 @@ while not rospy.is_shutdown():
     key = input("press Enter to capture sample: " + str(count))
     if key == 'q':
         break
-    time.sleep(1)
+    time.sleep(0.1)
     # Save image to folder
     image_filename = str(count) + '.png'
     cv2.imwrite(os.path.join(image_dir, image_filename), received_image)

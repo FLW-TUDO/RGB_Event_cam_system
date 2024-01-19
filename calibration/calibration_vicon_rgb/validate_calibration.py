@@ -10,12 +10,14 @@ from scipy.spatial.transform import Rotation as R
 #    [-1,   0,  0,  0.04],
 #    [ 0,  -1,  0,  -0.045],
 #    [ 0,   0,  0,  1]])
+
 H_cam_vicon_2_cam_optical = np.array([
-                                     [-9.12530750e-03, - 1.08164565e-02,  9.99899862e-01,  0.0204],
-                                     [-9.99946116e-01, - 4.85033329e-03, - 9.17819830e-03,  0.04],
-                                     [4.94912316e-03, - 9.99929737e-01, - 1.07716128e-02,   -0.04],
-                                     [ 0.,          0.,          0.,          1.  ]
-                            ])
+    [ 0.1844511,   0.10184152,  0.97755107,  0.13975843],
+    [-0.98279335,  0.02897629,  0.18242149, -0.54963646],
+    [-0.00974772, -0.99437854,  0.10543387, -0.50285077],
+    [ 0.,          0.,          0.,          1.        ]])
+
+
 
 params = [1.93686226e+03, 1.93330361e+03, 9.85688080e+02, 7.71096964e+02]
 #params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
@@ -26,7 +28,7 @@ camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], 
 #                          [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
 distortion_coefficients = np.array([-0.12905658, -0.01019267, 0.00562304, -0.00015354, 0.13542021])
 
-img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/second_calib/test/images/0.png'
+img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test/images/0.png'
 
 img_test = cv2.imread(img_path)
 
@@ -51,8 +53,8 @@ H_cam_optical_2_vicon[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, 
 
 # make point of verification
 H_v_2_point = np.array([
-    [ 1,  0,  0,  -0.58],
-    [0,  1,  0,   0.122],
+    [ 1,  0,  0,  0],
+    [0,  1,  0,   0],
     [ 0, 0,  1,  0],
     [ 0,  0,  0,  1]])
 # transform the point to the camera optical frame
