@@ -9,15 +9,16 @@ import os
 import json
 from scipy.spatial.transform import Rotation as R
 
+# =============================================================================
 #############  Define Paths and Parameters #############
+# =============================================================================
 square_size_meter = 0.125
-image_size = (2048,1526)
+image_size = (2048, 1536)
 data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
 checker_board_size = (8, 5)
 params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
 distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
-#params = [1936.8622, 1933.3, 985.7, 771]
-#distortion_coefficients = np.array([-0.12905658, -0.01019267, 0.00562304, -0.00015354, 0.13542021])
+# =============================================================================
 
 json_path = os.path.join(data_path, 'vicon_coordinates.json')
 camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
@@ -27,7 +28,7 @@ num_of_images = len(os.listdir(images_path))
 ###############
 
 objp = np.zeros((checker_board_size[0] * checker_board_size[1], 3), np.float32)
-objp[:, :2] = np.mgrid[0:checker_board_size[0], 0:checker_board_size[1]].T.reshape(-1, 2)
+objp[:, :2] = np.mgrid[0:checker_board_size[0], 0:checker_board_size[1]].T.reshape(-1, 2) * square_size_meter
 
 objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane.
@@ -40,15 +41,12 @@ for img_id in range(num_of_images):
     img_path = os.path.join(images_path, str(img_id) + '.png')
     img = cv2.imread(img_path)
 
-    # undistort image using camera matrix and distortion coefficients
-
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # find the chess board corners
     ret, corners = cv2.findChessboardCorners(gray, checker_board_size, None)
 
     # if found, add object points, image points (after refining them)
     if ret == True:
-        #print(i)
         # refine corners
         corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
         # draw and display the corners
@@ -61,8 +59,7 @@ for img_id in range(num_of_images):
         imgpoints.append(corners2)
     #i += 1
 # calibrate camera
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], camera_matrix,
-                                                   distortion_coefficients)
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], camera_matrix, distortion_coefficients)
 
 #print(mtx, 'dist', dist)
 # convert tvecs from pixels to meters
