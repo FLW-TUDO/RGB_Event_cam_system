@@ -60,7 +60,7 @@ flag_rgb = 0
 
 # Callback function for image
 def image_callback(data):
-    print('image callback')
+    #print('image callback')
     global received_image, flag_rgb
     # global i
     received_image = bridge.imgmsg_to_cv2(data, "bgr8")
@@ -95,7 +95,7 @@ def event_callback_left(event_data):
     # read data from
     global event_left, flag_event_left
     flag_event_left = 1
-    print('left callback')
+    #print('left callback')
     event_left = event_data.events
     event_callback_left.counter += 1
     #if event_callback_left.counter % 5 == 0:
@@ -285,41 +285,14 @@ rospy.Subscriber(event_topic_right, EventArray, event_callback_right)
 image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
 rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 #rospy.Subscriber('/vicon/markers', TransformStamped, vicon_obj_callback)
-#callback_thread_instance2 = Thread(target=callback_thread_right)
-#callback_thread_instance2.start()
-#callback_thread_instance3 = Thread(target=callback_thread_image)
-#callback_thread_instance3.start()
-#callback_thread_instance4 = Thread(target=callback_thread_vicon)
-#callback_thread_instance4.start()
+
 
 while not rospy.is_shutdown():
     print('inside while loop')
-    #print(vicon_cam_rotation)
-    print(flag_vicon, flag_rgb, flag_event_left, flag_event_right)
+    #print(flag_vicon, flag_rgb, flag_event_left, flag_event_right)
     if flag_event_left == 1 and flag_event_right == 1 and flag_rgb == 1 and flag_vicon == 1:
-        print('inside if')
         #compute_transformation(event_left, event_right, vicon_cam_translation, vicon_cam_rotation, received_image)
-        print("Computing transformations after receiving 5 messages")
-        for event_traverser in range(len(event_left)):
-            x_left[event_traverser] = event_left[event_traverser].x
-            y_left[event_traverser] = event_left[event_traverser].y
-            polarity_left[event_traverser] = event_left[event_traverser].polarity
-            image_left[event_left[event_traverser].y, event_left[event_traverser].x] = int(
-                event_left.events[event_traverser].polarity) * 254
-            # visualize image using opencv
-            cv2.imshow('image', image_left)
-            cv2.waitKey(1)
-            # cv2.destroyAllWindows()
-        for event_traverser in range(len(event_right)):
-            x_right[event_traverser] = event_right[event_traverser].x
-            y_right[event_traverser] = event_right[event_traverser].y
-            polarity_right[event_traverser] = event_right[event_traverser].polarity
-            image_right[event_right[event_traverser].y, event_right[event_traverser].x] = int(
-                event_right.events[event_traverser].polarity) * 254
-            # visualize image using opencv
-            cv2.imshow('image', image_right)
-            cv2.waitKey(1)
-            # cv2.destroyAllWindows()
+        print("Computing transformations")
 
         H_cam_vicon_2_cam_optical = np.array([
             [0.1844511, 0.10184152, 0.97755107, 0.13975843],
@@ -375,25 +348,12 @@ while not rospy.is_shutdown():
         # ======================================================================================
         H_cam_1_point = np.matmul(H_cam1_rgb, H_rgb_2_point)
         t_cam1_2_point = H_cam_1_point[:3, 3]
-        # cam1 parameters
-        # camera_mtx_cam1 = np.array(
-        #    [[704.7619734668378, 0, 300.78994093351923], [0, 705.9081489448346, 229.8585626133938], [0, 0, 1]])
-        # distortion_coeffs_cam1 = np.array(
-        #    [-0.364714404546865, 0.07816135096611694, 0.005085888890347796, -0.0036418328217707836])
 
-        # Project 3D points to image plane
-        # points_2d_cam1, _ = cv2.projectPoints(np.array([t_cam1_2_point]), np.array([[0, 0, 0]]), np.array([[0, 0, 0]]),
-        #                                     camera_mtx_cam1, distortion_coeffs_cam1)
-        # points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
-        # print(points_2d_cam1)
-        # Display the 2d points on the image
-        # img_test = cv2.circle(image_left, tuple(points_2d_cam1[0][0]), 10, (255, 0, 0), -1)
-        # cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
-        # cv2.waitKey(0)
 
         # ======================================================================================
         # Transform the point from cam 1 to cam 2 frame
         # ======================================================================================
         H_cam_2_point = np.matmul(H_cam2_cam1, H_cam_1_point)
         t_cam2_2_point = H_cam_2_point[:3, 3]
+        print('done')
         rate.sleep()

@@ -59,21 +59,38 @@ for img_id in range(num_of_images):
         imgpoints.append(corners2)
     #i += 1
 # calibrate camera
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], camera_matrix, distortion_coefficients)
+ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], camera_matrix, distortion_coefficients, flags=cv2.CALIB_USE_INTRINSIC_GUESS)
 
-#print(mtx, 'dist', dist)
+# convert rvecs to 3x3 rotation matrix
+rvecs = [cv2.Rodrigues(rvec)[0] for rvec in rvecs]
+
+# print(mtx, 'dist', dist)
 # convert tvecs from pixels to meters
 # TODO this conversion is not correct
-tvecs = np.array(tvecs) * square_size_meter
+tvecs = np.array(tvecs)  # * square_size_meter
 # iterate over the length of tvecs and rvecs
 R_cam_optical_2_target_vecs = np.array(rvecs)
 t_cam_optical_2_target_vecs = np.array(tvecs)
+
+R_target_2_cam_optical_vecs = np.array(rvecs)
+t_target_2_cam_optical_vecs = np.array(tvecs)
+
+# get inverse of R_target_2_cam_optical
+R_cam_optical_2_target_vecs = []
+t_cam_optical_2_target_vecs = []
+for i in range(len(R_target_2_cam_optical_vecs)):
+    R_cam_optical_2_target_vecs.append(np.transpose(R_target_2_cam_optical_vecs[i]))
+    t_cam_optical_2_target_vecs.append(-np.matmul(np.transpose(R_target_2_cam_optical_vecs[i]), t_target_2_cam_optical_vecs[i]))
+R_target_2_cam_optical_vecs = np.array(R_target_2_cam_optical_vecs)
+t_target_2_cam_optical_vecs = np.array(t_target_2_cam_optical_vecs)
 
 # read the json file
 with open(json_path, 'r') as f:
     data = json.load(f)
 R_base_2_vicon_cam_vecs = []
 t_base_2_vicon_cam_vecs = []
+R_vicon_cam_2_base_vecs = []
+t_vicon_cam_2_base_vecs = []
 for i in range(len(data)):
     translation = data[str(i)]['translation']
     rotation = data[str(i)]['rotation']
@@ -81,16 +98,26 @@ for i in range(len(data)):
     # convert quaternion to rotation matrix using Scipy
     R_base_2_vicon_cam = R.from_quat(R_base_2_vicon_cam_quaternion).as_matrix()
     t_base_2_vicon_cam = np.array(translation)
+
     R_base_2_vicon_cam_vecs.append(R_base_2_vicon_cam)
     t_base_2_vicon_cam_vecs.append(t_base_2_vicon_cam)
+
+    # get inverse of R_base_2_vicon_cam
+    R_vicon_cam_2_base = np.transpose(R_base_2_vicon_cam)
+    t_vicon_cam_2_base = -np.matmul(np.transpose(R_base_2_vicon_cam), t_base_2_vicon_cam)
+    R_vicon_cam_2_base_vecs.append(R_vicon_cam_2_base)
+    t_vicon_cam_2_base_vecs.append(t_vicon_cam_2_base)
+
 R_base_2_vicon_cam_vecs = np.array(R_base_2_vicon_cam_vecs)
 t_base_2_vicon_cam_vecs = np.array(t_base_2_vicon_cam_vecs)
+R_vicon_cam_2_base_vecs = np.array(R_vicon_cam_2_base_vecs)
+t_vicon_cam_2_base_vecs = np.array(t_vicon_cam_2_base_vecs)
 
 # calculate the eye in hand calibration
 R_viconCam_2_cam_optical, t_viconCam_2_cam_optical = cv2.calibrateHandEye(R_base_2_vicon_cam_vecs,
                                                                           t_base_2_vicon_cam_vecs,
-                                                                          R_cam_optical_2_target_vecs,
-                                                                          t_cam_optical_2_target_vecs,
+                                                                          R_target_2_cam_optical_vecs,
+                                                                          t_target_2_cam_optical_vecs,
                                                                           cv2.CALIB_HAND_EYE_TSAI)
 
 # homogenous gripper to camera
@@ -98,5 +125,3 @@ H = np.concatenate((R_viconCam_2_cam_optical, t_viconCam_2_cam_optical), axis=1)
 H = np.concatenate((H, np.array([[0, 0, 0, 1]])), axis=0)
 print('H_viconCam_2_cam_optical = ')
 print(H)
-
-
