@@ -41,7 +41,7 @@ vicon_data = {}
 
     # events_left = bag.read_messages(events_topic_left)
 count = 0
-
+'''
 for top, msg, tim in bag.read_messages(events_topic_left):
     t = msg.header.stamp
     count = 0
@@ -79,7 +79,7 @@ for top, msg, tim in bag.read_messages(events_topic_right):
 
     #np.save('/home/eventcamera/data/event_camera_right/' + str(t) + '.npy', event_right_data)
     #print('saved')
-
+'''
 count = 0
 for top, msg, tim in bag.read_messages(vicon_topic_cam_sys):
     t = msg.header.stamp
@@ -96,13 +96,14 @@ for top, msg, tim in bag.read_messages(vicon_topic_cam_sys):
     vicon_data[count] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
     count += 1
 
-with open('/home/eventcamera/data/vicon_data/object1.json', 'w') as json_file:
-    json.dump(vicon_data, json_file)
+with open('/home/eventcamera/data/vicon_data/object.json', 'w') as json_file:
+    json.dump(vicon_data, json_file, indent=2)
 print('saved')
 #loaded_array = np.load('/home/eventcamera/data/vicon_data/object1.npy', allow_pickle=True)
 #loaded_list1 = loaded_array[0]
 #loaded_list2 = loaded_array[1]
 #loaded_list3 = loaded_array[2]
+
 
 image_topic = bag.read_messages(rgb_topic)
 for k, b in enumerate(image_topic):
