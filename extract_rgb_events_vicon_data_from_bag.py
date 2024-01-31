@@ -18,6 +18,7 @@ from dvs_msgs.msg import EventArray
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image
 import numpy as np
+from datetime import datetime
 
 # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
 # /dvxplorer_right/events from the bag file.
@@ -94,6 +95,7 @@ for top, msg, tim in bag.read_messages(vicon_topic_cam_sys):
         msg.transform.rotation.w]
     # save t, translation and rotation to a json file
     vicon_data[count] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
+    #vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
     count += 1
 
 with open('/home/eventcamera/data/vicon_data/object.json', 'w') as json_file:

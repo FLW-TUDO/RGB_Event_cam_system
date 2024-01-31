@@ -14,6 +14,9 @@ json_path_object = os.path.join(data_path, 'object.json')
 #    data_camera = json.load(f)
 with open(json_path_object, 'r') as f:
     data_object = json.load(f)
+
+with open(json_path_camera, 'r') as f:
+    data_camera = json.load(f)
 rgb_image_path = '/home/eventcamera/data/rgb/'
 rgb_timestamp = os.listdir(rgb_image_path)
 rgb_timestamp.sort()
@@ -22,11 +25,10 @@ with open(json_path_object, 'r') as file:
     loaded_array = json.load(file)
 # extract only timestamp in a numpy array from dictionary loaded_array
 timestamp_object = []
-for i in range(len(loaded_array)):
-    #print(i)
-    timestamp_object.append(loaded_array[str(i)]['timestamp'])
-timestamp_object = np.array(timestamp_object)
 
+for k,v in loaded_array.items():
+    timestamp_object.append(k)
+timestamp_object = np.array(timestamp_object)
 
 def find_closest_elements(A, B):
     result = {}
@@ -45,22 +47,23 @@ def remove_extension_and_convert_to_int(arr):
     return modified_arr
 
 
+# Compute vicons coordinates corresponding to rgb image. The timestamp of the rgb image is used to find the
+# nearest timestamp in vicon data of object
 rgb_timestamp = remove_extension_and_convert_to_int(rgb_timestamp)
 # convert list of strings to list of integers
 timestamp_object = list(map(int, timestamp_object))
 result_dict = find_closest_elements(rgb_timestamp, timestamp_object) # Output in format (rgb_timestamp, timestamp_object)
 vicon_coord = []
+timestamps_closest_object = list(result_dict.values())
 
-
-for key, value in result_dict.items():
-    value = str(value)
-    #get translation and rotation from loaded_array for the timetamp values corresponding to value in result_dict
-    translations_for_timestamps = {
-        timestamp: np.array(loaded_array[timestamp]["translation"]) if timestamp in loaded_array else None
-        for timestamp in value
-    }
+translations_with_timestamps = {
+    timestamp: np.array(loaded_array[str(timestamp)]["translation"])
+    for timestamp in timestamps_closest_object}
+rotations_with_timestamps = {
+    timestamp: np.array(loaded_array[str(timestamp)]["rotation"])
+    for timestamp in timestamps_closest_object
+}
     #vicon_coord.append(loaded_array[str(value)])
-vicon_coord = np.array(vicon_coord)
 
 
 # Transformation matrix obtained from eye in hand calibration
@@ -87,9 +90,9 @@ t_base_2_vicon_cam_vecs = np.array(t_base_2_vicon_cam_vecs)
 
 R_base_2_vicon_object_vecs = []
 t_base_2_vicon_object_vecs = []
-for i in range(len(data_object)):
-    translation = data_object[str(i)]['translation']
-    rotation = data_object[str(i)]['rotation']
+for t in timestamps_closest_object:
+    translation = translations_with_timestamps[t]
+    rotation = rotations_with_timestamps[t]
     R_base_2_vicon_object_quaternion = np.array(rotation)
     # convert quaternion to rotation matrix using Scipy
     R_base_2_vicon_object = R.from_quat(R_base_2_vicon_object_quaternion).as_matrix()
