@@ -61,6 +61,7 @@ Go to folder cd RGB_stereo_event
 
 The calibration can be performed using kalibr. Kalibr reads the images from a ROS bag.
 So the reconstructed event images have to converted to a ROS bag using this command:
+     
      rosrun kalibr kalibr_bagcreater --folder reconstructed_event_images/ --output-bag images.bag
      
      rosrun kalibr kalibr_calibrate_cameras \
