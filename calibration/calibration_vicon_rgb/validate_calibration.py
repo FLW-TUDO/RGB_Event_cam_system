@@ -28,13 +28,13 @@ camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], 
 distortion_coefficients = np.array([-1.76581808e-01, 1.06210912e-01, -1.55074994e-04,
                                     5.03366350e-04, -4.07696624e-02])
 
-img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test/images/0.png'
+img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/images/0.png'
 
 img_test = cv2.imread(img_path)
 
 # base to camera_vicon transformation. The below values are taken from recorded json file
-translation = [1.7316599964996864, -0.5580612164401452, 0.8022367272635139]
-rotation_quat = [-0.18889019791401296, 0.04653582971135208, 0.9491809235562345, 0.24740752624367504]
+translation = [0.35485246709140494, 3.616038353995524, 1.104936520424414]
+rotation_quat = [0.1408416098631231, 0.06211473644772586, -0.6806219495242453, 0.7162814825702317]
 
 # get rotation matrix from quaternion
 rotation = R.from_quat(rotation_quat).as_matrix()
@@ -54,7 +54,7 @@ H_cam_optical_2_vicon[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, 
 # make point of verification
 H_v_2_point = np.array([
     [1, 0, 0, 0],
-    [0, 1, 0, 2],
+    [0, 1, 0, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]])
 # transform the point to the camera optical frame

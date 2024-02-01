@@ -42,7 +42,7 @@ image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
 vicon_subscriber = rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 
 # Folder to save images
-save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
+save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/'
 os.makedirs(save_folder, exist_ok=True)
 image_dir = os.path.join(save_folder, 'images')
 os.makedirs(image_dir, exist_ok=True)
