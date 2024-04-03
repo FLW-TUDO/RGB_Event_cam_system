@@ -16,7 +16,7 @@ cameras_params.json
 {
   "RGB":                { "intrinsic": [fx fy cx cy] "distortion": [k1 k2 k3 k4]},
   "event_camera_left":  { "intrinsic": [fx fy cx cy] "distortion": [k1 k2 k3 k4]},
-  "event_camera_left":  { "intrinsic": [fx fy cx cy] "distortion": [k1 k2 k3 k4]},
+  "event_camera_right":  { "intrinsic": [fx fy cx cy] "distortion": [k1 k2 k3 k4]},
 }
 ```
 
