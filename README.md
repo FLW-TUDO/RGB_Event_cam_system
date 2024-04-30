@@ -13,13 +13,18 @@ and don't the sourcing to the .bashrc. Just source its workspace before using it
 
      source ~/kalibr_workspace/devel/setup.bash
 
-also install uslam in this workspace directory "~/uslam_ws". Add the workspace sourcing in the .bashrc as usual for ROS.
+Also install uslam in this workspace directory "~/uslam_ws". Add the workspace sourcing in the .bashrc as usual for ROS.
+https://github.com/uzh-rpg/rpg_ultimate_slam_open/tree/main
 
 All calibration data will be saved in 
 
      cd ~/event_camera/calibration_data
 
-Install this in a workspace and make sure the workspace is sources
+Install in a workspace and make sure the workspace is sourced
+
+If using ids camera, then instal ids camera driver as mentioned in:
+
+https://github.com/FLW-TUDO/ids_camera_driver
 
 ## event camera calibration
 
