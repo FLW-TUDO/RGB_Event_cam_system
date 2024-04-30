@@ -25,9 +25,13 @@ camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], 
 distortion_coefficients = np.array([-1.76581808e-01, 1.06210912e-01, -1.55074994e-04,
                                     5.03366350e-04, -4.07696624e-02])
 
-img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/images/0.png'
+#img_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/images/0.png'
+img_path = "/home/eventcamera/data/rgb/1712920771350731701.png"
 img_path_left = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/reconstructed_images/hall2/left/1706718612728642000.png'
 img_path_right = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/reconstructed_images/hall1/right/1706718567179738000.png'
+img_path_left = '/home/eventcamera/data/reconstructed_images/event_cam_left/1712920771359574000.png'
+img_path_right = '/home/eventcamera/data/reconstructed_images/event_cam_right/1712920771358463000.png'
+
 img_test = cv2.imread(img_path)
 img_test_cam1 = cv2.imread(img_path_left)
 img_test_cam2 = cv2.imread(img_path_right)
@@ -36,6 +40,7 @@ translation = []
 rotation_quat = []
 # base to camera_vicon transformation. The below values are taken from recorded json file
 json_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/test2/vicon_coordinates.json'
+json_path = '/home/eventcamera/data/vicon_data/test.json'
 with open(json_path, 'r') as f:
     data = json.load(f)
 for i in range(len(data)):
@@ -53,18 +58,20 @@ H_base_2_cam_vicon[:3, 3] = translation
 H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
 
 # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
-H_cam_optical_2_vicon = np.eye(4)
-H_cam_optical_2_vicon[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
-H_cam_optical_2_vicon[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+H_cam_optical_2_base = np.eye(4)
+H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
 
-# make point of verification
+# make point of verification -0.09324468209902101,
+#       0.09552323989025352,
+#       0.21876072081161987
 H_v_2_point = np.array([
-    [1, 0, 0, 1.74],
-    [0, 1, 0, 0.42],
-    [0, 0, 1, 0],
+    [1, 0, 0, -0.09324468209902101],
+    [0, 1, 0, 0.09552323989025352],
+    [0, 0, 1, 0.21876072081161987],
     [0, 0, 0, 1]])
 # transform the point to the camera optical frame
-H_cam_optical_2_point = np.matmul(H_cam_optical_2_vicon, H_v_2_point)
+H_cam_optical_2_point = np.matmul(H_cam_optical_2_base, H_v_2_point)
 
 # get the 3d point
 t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
@@ -79,7 +86,7 @@ img_test = cv2.circle(img_test, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
 cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
 cv2.waitKey(0)
 
-t_rgb_2_point = t_cam_optical_2_point
+# t_rgb_2_point = t_cam_optical_2_point
 H_rgb_2_point = H_cam_optical_2_point
 
 H_cam1_2_rgb = np.array([[0.9971993087878418, 0.0005258497031806043, 0.07478811426377688, 0.053269788085482585],

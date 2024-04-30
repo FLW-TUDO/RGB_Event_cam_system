@@ -6,29 +6,36 @@ import os
 import json
 from scipy.spatial.transform import Rotation as R
 
+# read .npy file
+
 
 data_path = '/home/eventcamera/data/vicon_data/'
-json_path_camera = os.path.join(data_path, 'vicon_coordinates_camera.json')
-json_path_object = os.path.join(data_path, 'object.json')
+json_path_camera_sys = os.path.join(data_path, 'event_cam_sys.json')
+json_path_object = os.path.join(data_path, 'object1.json')
+json_path_event_cam_left = '/home/eventcamera/data/reconstructed_images/event_cam_left/'
+json_path_event_cam_right = '/home/eventcamera/data/reconstructed_images/event_cam_right/'
 # with open(json_path_camera, 'r') as f:
 #    data_camera = json.load(f)
-with open(json_path_object, 'r') as f:
-    data_object = json.load(f)
 
-with open(json_path_camera, 'r') as f:
-    data_camera = json.load(f)
 rgb_image_path = '/home/eventcamera/data/rgb/'
 rgb_timestamp = os.listdir(rgb_image_path)
 rgb_timestamp.sort()
 
+event_cam_left_timestamp = os.listdir(json_path_event_cam_left)
+event_cam_left_timestamp.sort()
+
+event_cam_right_timestamp = os.listdir(json_path_event_cam_right)
+event_cam_right_timestamp.sort()
+
 with open(json_path_object, 'r') as file:
-    loaded_array = json.load(file)
+    object_array = json.load(file)
 # extract only timestamp in a numpy array from dictionary loaded_array
 timestamp_object = []
 
-for k,v in loaded_array.items():
-    timestamp_object.append(k)
+for k, v in object_array.items():
+    timestamp_object.append(v['timestamp'])
 timestamp_object = np.array(timestamp_object)
+
 
 def find_closest_elements(A, B):
     result = {}
@@ -47,112 +54,293 @@ def remove_extension_and_convert_to_int(arr):
     return modified_arr
 
 
-# Compute vicons coordinates corresponding to rgb image. The timestamp of the rgb image is used to find the
+# Compute vicons coordinates of object corresponding to rgb image. The timestamp of the rgb image is used to find the
 # nearest timestamp in vicon data of object
 rgb_timestamp = remove_extension_and_convert_to_int(rgb_timestamp)
+event_cam_left_timestamp = remove_extension_and_convert_to_int(event_cam_left_timestamp)
+event_cam_right_timestamp = remove_extension_and_convert_to_int(event_cam_right_timestamp)
 # convert list of strings to list of integers
 timestamp_object = list(map(int, timestamp_object))
-result_dict = find_closest_elements(rgb_timestamp, timestamp_object) # Output in format (rgb_timestamp, timestamp_object)
-vicon_coord = []
+result_dict = find_closest_elements(rgb_timestamp,
+                                    timestamp_object)  # Output in format (rgb_timestamp, timestamp_object)
+#vicon_coord = []
 timestamps_closest_object = list(result_dict.values())
+result_dict2 = find_closest_elements(rgb_timestamp,event_cam_left_timestamp)
+timestamp_closest_ec_left = list(result_dict2.values())
+result_dict3 = find_closest_elements(rgb_timestamp,event_cam_right_timestamp)
+timestamp_closest_ec_right = list(result_dict3.values())
 
 translations_with_timestamps = {
-    timestamp: np.array(loaded_array[str(timestamp)]["translation"])
+    timestamp: np.array(object_array[str(timestamp)]["translation"])
     for timestamp in timestamps_closest_object}
 rotations_with_timestamps = {
-    timestamp: np.array(loaded_array[str(timestamp)]["rotation"])
+    timestamp: np.array(object_array[str(timestamp)]["rotation"])
     for timestamp in timestamps_closest_object
 }
-    #vicon_coord.append(loaded_array[str(value)])
+#vicon_coord.append(loaded_array[str(value)])
 
 
 # Transformation matrix obtained from eye in hand calibration
-H_cam_vicon_2_cam_optical = np.array([
-    [-9.12530750e-03, - 1.08164565e-02, 9.99899862e-01, 0.0204],
-    [-9.99946116e-01, - 4.85033329e-03, - 9.17819830e-03, 0.04],
-    [4.94912316e-03, - 9.99929737e-01, - 1.07716128e-02, -0.04],
-    [0., 0., 0., 1.]
-])
+H_cam_vicon_2_cam_optical = np.array([[-0.00653897, 0.01742515, 0.99982679, 0.06225329],
+                                      [-0.99986245, -0.01535384, -0.00627162, 0.00494558],
+                                      [0.01524189, -0.99973028, 0.01752315, -0.03356527],
+                                      [0., 0., 0., 1.]])
 
-R_base_2_vicon_cam_vecs = []
-t_base_2_vicon_cam_vecs = []
-for i in range(len(data_camera)):
-    translation = data_camera[str(i)]['translation']
-    rotation = data_camera[str(i)]['rotation']
-    R_base_2_vicon_cam_quaternion = np.array(rotation)
-    # convert quaternion to rotation matrix using Scipy
-    R_base_2_vicon_cam = R.from_quat(R_base_2_vicon_cam_quaternion).as_matrix()
-    t_base_2_vicon_cam = np.array(translation)
-    R_base_2_vicon_cam_vecs.append(R_base_2_vicon_cam)
-    t_base_2_vicon_cam_vecs.append(t_base_2_vicon_cam)
-R_base_2_vicon_cam_vecs = np.array(R_base_2_vicon_cam_vecs)
-t_base_2_vicon_cam_vecs = np.array(t_base_2_vicon_cam_vecs)
+params = [1.81601107e+03, 1.81264445e+03, 1.00383169e+03, 7.16010695e+02]
+# params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
+camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
+distortion_coefficients = np.array([-1.76581808e-01, 1.06210912e-01, -1.55074994e-04,
+                                    5.03366350e-04, -4.07696624e-02])
+camera_mtx_cam1 = np.array(
+    [[718.9289498879248, 0, 287.4206641081329], [0, 718.8476596505732, 232.6402787336837], [0, 0, 1]])
+distortion_coeffs_cam1 = np.array(
+    [-0.3094967913882128, -0.10722657430965295, 0.008512403913427787, 0.000592616793055609])
 
-R_base_2_vicon_object_vecs = []
-t_base_2_vicon_object_vecs = []
-for t in timestamps_closest_object:
-    translation = translations_with_timestamps[t]
-    rotation = rotations_with_timestamps[t]
-    R_base_2_vicon_object_quaternion = np.array(rotation)
-    # convert quaternion to rotation matrix using Scipy
-    R_base_2_vicon_object = R.from_quat(R_base_2_vicon_object_quaternion).as_matrix()
-    t_base_2_vicon_object = np.array(translation)
-    R_base_2_vicon_object_vecs.append(R_base_2_vicon_object)
-    t_base_2_vicon_object_vecs.append(t_base_2_vicon_object)
-R_base_2_vicon_object_vecs = np.array(R_base_2_vicon_object_vecs)
-t_base_2_vicon_object_vecs = np.array(t_base_2_vicon_object_vecs)
+camera_mtx_cam2 = np.array(
+    [[745.1353300950308, 0,  291.1070763508334], [0, 747.3744176138202, 245.89026445203564], [0, 0, 1]])
+distortion_coeffs_cam2 = np.array(
+    [-0.2496983957244161, -0.2978060510925673, 0.009342174824708725, 0.00328860522240014])
 
-# make homogeneous transformation matrix
-H_base_2_cam_vicon = np.eye(4)
-H_base_2_cam_vicon[:3, :3] = rotation
-H_base_2_cam_vicon[:3, 3] = translation
-
-# make homogeneous transformation matrix from base to camera optical frame
-H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
-
-# invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
-# H_cam_optical_2_base = np.eye(4)
-# H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
-# H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
-t_cam_optical_2_base = np.transpose(H_base_2_cam_optical[:3, :3])
-
-rgb_img_path = "/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam0/1704386799592976847.png"
-event_cam_img = "/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam1/1704386800701017000.png"
+#=============================================================================
+# Transformation matrix from camera 1 to camera 0 and camera 2 to camera 1. cam0 is rgb camera, cam1 is event camera 1
+# =============================================================================
 quat_cam2_cam1 = [0.00026235, -0.00376717, -0.00030698, 0.99999282]
 quat_cam1_cam0 = [-0.00916228, -0.04119687, 0.0005243, 0.9991089]
 R_cam1_cam0 = R.from_quat(quat_cam1_cam0).as_matrix()
 
 # Transformation matrix from camera 1 to camera 0
-H_cam1_cam0 = np.eye(4)
-H_cam1_cam0[:3, :3] = R_cam1_cam0
-H_cam1_cam0[:3, 3] = [0.05834856, 0.00157235, 0.02935724]
+H_cam1_2_rgb = np.array([[0.9971993087878418, 0.0005258497031806043, 0.07478811426377688, 0.053269788085482585],
+                       [0.0006902602101232752, 0.9998679823207766, -0.016233960410603578, 0.009952490862473908],
+                       [-0.07478677753376195, 0.016240117359809583, 0.99706729787625, -0.04082399413941046],
+                       [0.0, 0.0, 0.0, 1.0]])
 
 # Transformation matrix from camera 2 to camera 1
-H_cam2_cam1 = np.eye(4)
-H_cam2_cam1[:3, :3] = R.from_quat(quat_cam2_cam1).as_matrix()
-H_cam2_cam1[:3, 3] = [-0.10245441, 0.00011387, 0.00283878]
+H_cam2_cam1 = np.array([[0.9999312261471128, -0.00039260427945142073, 0.011721298468554263, -0.10223038360927061],
+                        [0.00039304051036216355, 0.9999999221500911, -3.491341559211893e-05, 0.00027606541625718685],
+                        [-0.011721283848896005, 3.9517959594199465e-05, 0.9999313026119555, 0.005272335654555953],
+                        [0.0, 0.0, 0.0, 1.0]])
+# =============================================================================
 
-# project point (x,y,z) in cam0 coordinate to cam1 coordinate
-point_cam0 = np.array([
-    [1, 0, 0, t_cam_optical_2_base[0]],
-    [0, 1, 0, t_cam_optical_2_base[1]],
-    [0, 0, 1, t_cam_optical_2_base[2]],
-    [0, 0, 0, 1]])
-point_cam1 = np.matmul(H_cam1_cam0, point_cam0)
-print(point_cam1)
-# project point (863,819) in cam1 coordinate to cam2 coordinate
-point_cam2 = np.matmul(H_cam2_cam1, point_cam1)
-print(point_cam2)
+transformations = {}
+# Read the vicon coordinates of the even camera system. Traverse through the coordinates
+with open(json_path_camera_sys, 'r') as f:
+    data = json.load(f)
+for i,v in data.items():
+    if i == str(len(data) - 1):
+        continue
+    translation = data[str(i)]['translation']
+    rotation_quat = data[str(i)]['rotation']
 
-# use open cv to show the rgb and event camera images
-rgb_img = cv2.imread(rgb_img_path)
-cv2.circle(rgb_img, (863, 819), 10, (0, 0, 255), -1)
-cv2.imshow("img", rgb_img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    # get rotation matrix from quaternion
+    rotation = R.from_quat(rotation_quat).as_matrix()
+    # make homogeneous transformation matrix
+    H_base_2_cam_vicon = np.eye(4)
+    H_base_2_cam_vicon[:3, :3] = rotation
+    H_base_2_cam_vicon[:3, 3] = translation
 
-event_img = cv2.imread(event_cam_img)
-cv2.circle(event_img, (point_cam1[0, 3], 819), 10, (0, 0, 255), -1)
-cv2.imshow("img", event_img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    # make homogeneous transformation matrix from base to camera optical frame
+    H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
+
+    # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
+    H_cam_optical_2_base = np.eye(4)
+    H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+    H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+    # Add H_cam_optical_2_base, timestamp to a dictionary. Append the H_cam_optical_2_base and timestamp on every iteration.
+    # This will give a list of dictionaries with H_cam_optical_2_base and timestamp
+    t_x = object_array[str(v['timestamp'])]['translation'][0]
+    t_y = object_array[str(v['timestamp'])]['translation'][1]
+    t_z = object_array[str(v['timestamp'])]['translation'][2]
+    H_v_2_point = np.array([
+        # [1, 0, 0, v[0]],
+        [1, 0, 0, t_x],
+        [0, 1, 0, t_y],
+        [0, 0, 1, t_z],
+        [0, 0, 0, 1]])
+
+    H_cam_optical_2_point = np.matmul(H_cam_optical_2_base, H_v_2_point)
+    t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
+    #print(t_cam_optical_2_point)
+    # points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
+    # points_2d = np.round(points_2d[0]).astype(int)
+    # print(points_2d)
+    # Display the 2d points on the image
+    # img_test = cv2.circle(img_test, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
+
+    # cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
+    # cv2.waitKey(0)
+    H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
+    # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
+    H_cam_optical_2_base = np.eye(4)
+    H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+    H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+    # Compute translation t_cam_optical_2_base
+    t_cam_optical_2_base = H_cam_optical_2_base[:3, 3]
+    # t_cam_optical_2_base = np.transpose(H_base_2_cam_optical[:3, :3])
+    H_rgb_2_point = H_cam_optical_2_point
+    # project point (x,y,z) in cam0 coordinate to cam1 coordinate
+    point_cam0 = np.array([
+        [1, 0, 0, t_cam_optical_2_base[0]],
+        [0, 1, 0, t_cam_optical_2_base[1]],
+        [0, 0, 1, t_cam_optical_2_base[2]],
+        [0, 0, 0, 1]])
+
+    H_cam1_2_point = np.matmul(H_cam1_2_rgb, H_rgb_2_point)
+
+    t_cam1_2_point = H_cam1_2_point[:3, 3]
+    #print(t_cam1_2_point)
+    # project point (863,819) in cam1 coordinate to cam2 coordinate
+    H_cam2_2_point = np.matmul(H_cam2_cam1, H_cam1_2_point)
+    t_cam2_2_point = H_cam2_2_point[:3, 3]
+    #print(t_cam2_2_point)
+    transformations[str(data[str(i)]['timestamp'])] = {'H_cam_optical_2_base': H_cam_optical_2_base.tolist(),
+                                                       'H_base_2_cam_vicon': H_base_2_cam_vicon.tolist(),
+                                                       't_cam_optical_2_point': t_cam_optical_2_point.tolist(),
+                                                       't_cam_optical_2_base': t_cam_optical_2_base.tolist(),
+                                                       'point_event_cam_left': t_cam1_2_point.tolist(),
+                                                       'point_event_cam_right': t_cam2_2_point.tolist(),
+                                                       'timestamp': str(v['timestamp'])
+                                                       }
+
+with open('/home/eventcamera/data/transformations/transformations.json', 'w') as json_file:
+    json.dump(transformations, json_file, indent=2)
+print('saved transformations data')
+'''
+projections_cam = {}
+
+# Transforms all point in vicon coordinates to camera optical or rgb frame
+#for k,v in translations_with_timestamps.items():
+for k, v in object_array.items():
+    H_v_2_point = np.array([
+        #[1, 0, 0, v[0]],
+        [1, 0, 0, v['translation'][0]],
+        [0, 1, 0, v['translation'][1]],
+        [0, 0, 1, v['translation'][2]],
+        [0, 0, 0, 1]])
+    H_cam_optical_2_base = transformations[str(k)]['H_cam_optical_2_base']
+    H_base_2_cam_vicon = transformations[str(k)]['H_base_2_cam_vicon']
+    H_cam_optical_2_point = np.matmul(H_cam_optical_2_base, H_v_2_point)
+    t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
+    #print(t_cam_optical_2_point)
+    # points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
+    #points_2d = np.round(points_2d[0]).astype(int)
+    #print(points_2d)
+    # Display the 2d points on the image
+    #img_test = cv2.circle(img_test, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
+
+    #cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
+    #cv2.waitKey(0)
+    H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
+    # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
+    H_cam_optical_2_base = np.eye(4)
+    H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+    H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+    # Compute translation t_cam_optical_2_base
+    t_cam_optical_2_base = H_cam_optical_2_base[:3, 3]
+    #t_cam_optical_2_base = np.transpose(H_base_2_cam_optical[:3, :3])
+    H_rgb_2_point = H_cam_optical_2_point
+    # project point (x,y,z) in cam0 coordinate to cam1 coordinate
+    point_cam0 = np.array([
+        [1, 0, 0, t_cam_optical_2_base[0]],
+        [0, 1, 0, t_cam_optical_2_base[1]],
+        [0, 0, 1, t_cam_optical_2_base[2]],
+        [0, 0, 0, 1]])
+
+    H_cam1_2_point = np.matmul(H_cam1_2_rgb, H_rgb_2_point)
+    t_cam1_2_point = H_cam1_2_point[:3, 3]
+    #print(point_cam1)
+    # project point (863,819) in cam1 coordinate to cam2 coordinate
+    H_cam2_2_point = np.matmul(H_cam2_cam1, H_cam1_2_point)
+    t_cam2_2_point = H_cam2_2_point[:3, 3]
+    # point_cam2 = np.matmul(H_cam2_cam1, point_cam1)
+    #print(point_cam2)
+    projections_cam[str(v['timestamp'])] = {'t_cam_optical_2_point': t_cam_optical_2_point.tolist(),
+                                            't_cam_optical_2_base': t_cam_optical_2_base.tolist(),
+                                            'point_event_cam_left': t_cam1_2_point.tolist(),
+                                            'point_event_cam_right': t_cam2_2_point.tolist(),
+                                            'timestamp': str(v['timestamp'])}
+
+with open('/home/eventcamera/data/transformations/projections_cam.json', 'w') as json_file:
+    json.dump(projections_cam, json_file, indent=2)
+print('saved projection data')
+'''
+count = 0
+with open('/home/eventcamera/data/transformations/transformations.json', 'r') as file:
+    projected_point_rgb_ec1_ec2 = json.load(file)
+
+for k,v in translations_with_timestamps.items():
+
+    print(k)
+    rgb_t = rgb_timestamp[count]
+    ec_left = timestamp_closest_ec_left[count]
+    ec_right = timestamp_closest_ec_right[count]
+    rgb_img_path = "/home/eventcamera/data/rgb/" + str(rgb_t) + ".png"
+    event_cam_left = "/home/eventcamera/data/reconstructed_images/event_cam_left/" + str(ec_left) + ".png"
+    event_cam_right = "/home/eventcamera/data/reconstructed_images/event_cam_right/" + str(ec_right) + ".png"
+    H_v_2_point = np.array([
+        [1, 0, 0, v[0]],
+        [0, 1, 0, v[1]],
+        [0, 0, 1, v[2]],
+        [0, 0, 0, 1]])
+
+    #H_cam_optical_2_point = np.matmul(H_cam_optical_2_base, H_v_2_point)
+    #t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
+    t_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_point'])
+    #change to numpy array
+
+    print(t_cam_optical_2_point)
+
+    points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
+    points_2d = np.round(points_2d[0]).astype(int)
+    rgb_img = cv2.imread(rgb_img_path)
+    img_test = cv2.circle(rgb_img, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
+
+    cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
+    cv2.waitKey(0)
+
+    #H_cam_optical_2_base = np.eye(4)
+    #H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
+    #H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]), H_base_2_cam_optical[:3, 3])
+    # Compute translation t_cam_optical_2_base
+    #t_cam_optical_2_base = H_cam_optical_2_base[:3, 3]
+    #H_rgb_2_point = H_cam_optical_2_point
+    # project point (x,y,z) in cam0 coordinate to cam1 coordinate
+    #point_cam0 = np.array([
+    #    [1, 0, 0, t_cam_optical_2_base[0]],
+    #    [0, 1, 0, t_cam_optical_2_base[1]],
+    #    [0, 0, 1, t_cam_optical_2_base[2]],
+    #    [0, 0, 0, 1]])
+
+    #H_cam1_2_point = np.matmul(H_cam1_2_rgb, H_rgb_2_point)
+    #t_cam1_2_point = H_cam1_2_point[:3, 3]
+    t_cam1_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_left'])
+    points_2d_cam1 = cv2.projectPoints(np.array([t_cam1_2_point]), np.eye(3), np.zeros(3), camera_mtx_cam1,
+                                       distortion_coeffs_cam1)
+    points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
+    print(points_2d_cam1)
+    # Display the 2d points on the image
+    img_test_cam1 = cv2.imread(event_cam_left)
+    img_test = cv2.circle(img_test_cam1, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
+    cv2.imshow('img', img_test)  # resize image to 0.5 for display
+    cv2.waitKey(0)
+
+    # print(point_cam1)
+    # project point (863,819) in cam1 coordinate to cam2 coordinate
+    #H_cam2_2_point = np.matmul(H_cam2_cam1, H_cam1_2_point)
+    #t_cam2_2_point = H_cam2_2_point[:3, 3]
+    t_cam2_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_right'])
+    # point_cam2 = np.matmul(H_cam2_cam1, point_cam1)
+    # print(point_cam2)
+
+    points_2d_cam2 = cv2.projectPoints(np.array([t_cam2_2_point]), np.eye(3), np.zeros(3), camera_mtx_cam2,
+                                       distortion_coeffs_cam2)
+    points_2d_cam2 = np.round(points_2d_cam2[0]).astype(int)
+    print(points_2d_cam2)
+    img_test_cam2 = cv2.imread(event_cam_right)
+    # Display the 2d points on the image
+    img_test = cv2.circle(img_test_cam2, tuple(points_2d_cam2[0][0]), 5, (255, 0, 0), -1)
+    cv2.imshow('img', img_test)  # resize image to 0.5 for display
+    if k == 1712920784856162863:
+        cv2.waitKey(0)
+    cv2.waitKey(0)
+    count += 1
+    cv2.destroyAllWindows()
