@@ -76,7 +76,7 @@ So the reconstructed event images have to converted to a ROS bag using this comm
       --models pinhole-radtan pinhole-radtan pinhole-radtan \
       --topics /cam0/image_raw /cam1/image_raw /cam2/image_raw \
       --bag images.bag \
-      --bag-freq 10.0 \
+      --bag-freq 100.0 \
       --verbose
 NOTE: For our case the model for dvxplorer event camera is omni radtan. But this can defer based on the lens that is used with camera.
 
