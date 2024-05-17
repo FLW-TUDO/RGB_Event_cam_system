@@ -16,8 +16,10 @@ square_size_meter = 0.125
 image_size = (2048, 1536)
 data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
 checker_board_size = (8, 5)
-params = [2592.7798180209766, 2597.1074116646814, 1121.2441077660412, 690.1066893999352]
-distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
+#params = [2001.0250442780605, 2001.2767496004499, 970.1619103491635, 684.6369964551955]
+params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
+#distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
+distortion_coefficients = np.array([-0.15753562435107302, 0.07457419544260213, -0.0041819685517017246, -0.006048084700111363])
 # =============================================================================
 
 json_path = os.path.join(data_path, 'vicon_coordinates.json')
@@ -60,7 +62,19 @@ for img_id in range(num_of_images):
         imgpoints.append(corners2)
     #i += 1
 # calibrate camera
-ret, mtx, dist, r, t = cv2.calibrateCamera(objpoints, imgpoints, image_size, gray.shape[::-1], None, None)
+params = [2001.0250442780605, 2001.2767496004499, 970.1619103491635, 684.6369964551955]
+mtx_initial = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
+dist_initial = np.array([-0.16662668463462832, 0.09713587034707222, 0.00044649384097793574, 0.0006466275306382167])
+# use flag
+flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
+         cv2.CALIB_FIX_PRINCIPAL_POINT +
+         cv2.CALIB_FIX_FOCAL_LENGTH +
+         cv2.CALIB_ZERO_TANGENT_DIST +
+         cv2.CALIB_FIX_K1 + cv2.CALIB_FIX_K2 +
+         cv2.CALIB_FIX_K3 + cv2.CALIB_FIX_K4 +
+         cv2.CALIB_FIX_K5 + cv2.CALIB_FIX_K6)
+ret, mtx, dist, r, t = cv2.calibrateCamera(objpoints, imgpoints, image_size, mtx_initial, dist_initial, flags=flags)
+
 '''
 R_tar2cam = []
 t_tar2cam = []

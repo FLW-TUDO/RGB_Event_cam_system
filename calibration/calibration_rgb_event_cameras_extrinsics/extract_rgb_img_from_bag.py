@@ -6,13 +6,13 @@ from cv_bridge import CvBridge
 import numpy as np
 import os
 
-output_dir = '/home/eventcamera/Eventcamera/calibration_data/Heeraj_calibration/reconstructed_event_images/cam0/'
-BAGFILE = '/home/eventcamera/Eventcamera/calibration_data/Heeraj_calibration/events_only.bag'
-os.mkdir(output_dir)
+output_dir = '/home/eventcamera/data/test_cam/'
+BAGFILE = '/home/eventcamera/data/test_cam/test3.bag'
+#os.mkdir(output_dir)
 
 if __name__ == '__main__':
     bag = rosbag.Bag(BAGFILE)
-    TOPIC = '/rgb/image_raw'
+    TOPIC = '/rgb/image_raw7_throttle'
     DESCRIPTION = 'color_'
     image_topic = bag.read_messages(TOPIC)
     i = 0

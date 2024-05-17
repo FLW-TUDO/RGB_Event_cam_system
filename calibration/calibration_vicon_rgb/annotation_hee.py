@@ -5,6 +5,8 @@ import cv2
 import os
 import json
 from scipy.spatial.transform import Rotation as R
+import trimesh
+import open3d as o3d
 
 # read .npy file
 
@@ -26,6 +28,7 @@ event_cam_left_timestamp.sort()
 
 event_cam_right_timestamp = os.listdir(json_path_event_cam_right)
 event_cam_right_timestamp.sort()
+H_cam_optical_2_base = np.eye(4)
 
 with open(json_path_object, 'r') as file:
     object_array = json.load(file)
@@ -81,11 +84,10 @@ rotations_with_timestamps = {
 
 
 # Transformation matrix obtained from eye in hand calibration
-H_cam_vicon_2_cam_optical = np.array([[ 0.00563068,  0.03006136,  0.9995322,  -0.05282819],
- [-0.99982796, -0.01749663,  0.00615856,  0.03674293],
- [ 0.01767357, -0.99939491,  0.02995767,  0.00407536],
- [ 0.     ,     0.       ,   0.        ,  1.        ]]
-                                     )
+H_cam_vicon_2_cam_optical = np.array([[-0.00653897, 0.01742515, 0.99982679, 0.06225329],
+                                      [-0.99986245, -0.01535384, -0.00627162, 0.00494558],
+                                      [0.01524189, -0.99973028, 0.01752315, -0.03356527],
+                                      [0., 0., 0., 1.]])
 
 # RGB camera
 #params = [1.81601107e+03, 1.81264445e+03, 1.00383169e+03, 7.16010695e+02]
@@ -297,8 +299,6 @@ for k,v in translations_with_timestamps.items():
     rgb_img_path = "/home/eventcamera/data/KLT/rgb/" + str(rgb_t) + ".png"
     event_cam_left = "/home/eventcamera/data/KLT/event_cam_left/" + str(ec_left) + ".png"
     event_cam_right = "/home/eventcamera/data/KLT/event_cam_right/" + str(ec_right) + ".png"
-
-
     H_v_2_point = np.array([
         [1, 0, 0, v[0]],
         [0, 1, 0, v[1]],
@@ -315,12 +315,28 @@ for k,v in translations_with_timestamps.items():
     points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
     points_2d = np.round(points_2d[0]).astype(int)
     rgb_img = cv2.imread(rgb_img_path)
-    # undistort the rgb image. Use camera matrix and
-    # distortion_coefficients = np.array([-0.16662668463462832, 0.09713587034707222, 0.00044649384097793574, 0.0006466275306382167])
-    img_undistorted = cv2.undistort(rgb_img, camera_matrix, distortion_coefficients)
+    img_test = cv2.circle(rgb_img, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
 
-    img_test = cv2.circle(img_undistorted, tuple(points_2d[0][0]), 10, (255, 0, 0), -1)
+    obj_geometry = o3d.io.read_point_cloud('/home/eventcamera/data/KLT/obj_000003.ply')
 
+    obj_geometry.points = o3d.utility.Vector3dVector(np.array(obj_geometry.points) / 1000)
+    center = np.mean(np.asarray(obj_geometry.points), axis=0)
+    points_3d = np.asarray(obj_geometry.points)
+
+    #points_3d_transformed = np.dot(H_cam_optical_2_base, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[:3, :].T
+    rot = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]
+    final_H = np.matmul(H_cam_optical_2_base, rot)
+    klt_3d_transform = np.matmul(H_cam_optical_2_base, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[:3, :].T
+    klt_center = np.matmul(H_cam_optical_2_base, np.array([center[0], center[1], center[2], 1]))[:3]
+    klt_2d, _ = cv2.projectPoints(klt_3d_transform, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
+    center_2d, _ = cv2.projectPoints(np.array([klt_center]), np.eye(3), np.zeros(3), camera_matrix,
+                                     distortion_coefficients)
+
+    for point in klt_2d:
+        img_test = cv2.circle(img_test, tuple(point[0].astype(int) + (38, 106)), 5, (255, 0, 0), -1)
+# Heeraj instead of hard coding, sub and add the center of the object to the points, add rotation
+    img_test = cv2.circle(img_test, tuple(center_2d[0][0].astype(int)), 5, (0, 255, 0), -1)
+    img_test = cv2.fillPoly(img_test, [np.array(klt_2d).reshape((-1, 1, 2)).astype(int)], (125, 125, 125))
     cv2.imshow('img', cv2.resize(img_test, (0, 0), fx=0.5, fy=0.5))  # resize image to 0.5 for display
     cv2.waitKey(0)
 
@@ -347,10 +363,7 @@ for k,v in translations_with_timestamps.items():
     # Display the 2d points on the image
     img_test_cam1 = cv2.imread(event_cam_left)
     img_test = cv2.circle(img_test_cam1, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
-    # undistort the event cam1 image
-    img_undistorted = cv2.undistort(img_test, camera_mtx_cam1, distortion_coeffs_cam1)
-
-    cv2.imshow('img', img_undistorted)  # resize image to 0.5 for display
+    cv2.imshow('img', img_test)  # resize image to 0.5 for display
     cv2.waitKey(0)
 
     # print(point_cam1)
@@ -368,11 +381,13 @@ for k,v in translations_with_timestamps.items():
     img_test_cam2 = cv2.imread(event_cam_right)
     # Display the 2d points on the image
     img_test = cv2.circle(img_test_cam2, tuple(points_2d_cam2[0][0]), 5, (255, 0, 0), -1)
-    # undistort the event cam2 image
-    img_undistorted = cv2.undistort(img_test, camera_mtx_cam2, distortion_coeffs_cam2)
-    cv2.imshow('img', img_undistorted)  # resize image to 0.5 for display
+    cv2.imshow('img', img_test)  # resize image to 0.5 for display
+
     if k == 1712920784856162863:
         cv2.waitKey(0)
     cv2.waitKey(0)
     count += 1
     cv2.destroyAllWindows()
+
+
+
