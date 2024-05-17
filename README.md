@@ -37,7 +37,7 @@ in front of the cameras. Make sure to cover the entire frame.
 
      mkdir ~/event_camera/calibration_data/events_only_calibration
      cd ~/event_camera/calibration_data/events_only_calibration
-     rosbag record /dvxplorer_left/events /dvxplorer_left/events /rgb/image_raw --output-name events_only.bag
+     rosbag record /dvxplorer_left/events /dvxplorer_right/events /rgb/image_raw --output-name events_only.bag
 
 Then run the "convert.py" and finally the "offline_reconstruction.py" scripts from the e2calib package.
 
@@ -57,7 +57,9 @@ Then run the "convert.py" and finally the "offline_reconstruction.py" scripts fr
      mv /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/e2calib/ /home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event/reconstructed_event_images/cam1 
 
 Extract RGB image from bag file by executing the script in folder RGB_Event_cam_system/calibration/calibration_rgb_event_cameras_extrinsics/
+     
      python RGB_Event_cam_system/calibration/calibration_rgb_event_cameras_extrinsics/extract_rgb_img_from_bag.py
+
 The RGB images will be extracted to folder cam0
 
 Source kalibr workspace:
@@ -71,10 +73,10 @@ So the reconstructed event images have to converted to a ROS bag using this comm
      
      rosrun kalibr kalibr_calibrate_cameras \
       --target ../checkerboard.yaml \
-      --models omni-radtan pinhole-radtan omni-radtan \
+      --models pinhole-radtan pinhole-radtan pinhole-radtan \
       --topics /cam0/image_raw /cam1/image_raw /cam2/image_raw \
       --bag images.bag \
-      --bag-freq 10.0 \
+      --bag-freq 100.0 \
       --verbose
 NOTE: For our case the model for dvxplorer event camera is omni radtan. But this can defer based on the lens that is used with camera.
 
