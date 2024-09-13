@@ -14,7 +14,8 @@ from scipy.spatial.transform import Rotation as R
 # =============================================================================
 square_size_meter = 0.125
 image_size = (2048, 1536)
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib'
+# Third calib is the original calibration as on 20 Aug 2024
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/fourth_calib'
 checker_board_size = (8, 5)
 #params = [2001.0250442780605, 2001.2767496004499, 970.1619103491635, 684.6369964551955]
 params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]

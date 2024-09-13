@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/RGB_Event_cam_system.iml" filepath="$PROJECT_DIR$/.idea/RGB_Event_cam_system.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../data/git/motion_segmentation/.idea/motion_segmentation.iml" filepath="$PROJECT_DIR$/../data/git/motion_segmentation/.idea/motion_segmentation.iml" />
     </modules>
   </component>
 </project>
