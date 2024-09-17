@@ -172,8 +172,21 @@ def save_bbox_values(output_dir, object_3d_transform_points):
         json.dump(Bbox.tolist(), json_file)
         json_file.write('\n')
 
-
-def project_points_to_image_plane(object_3d_transform_points, object_3d_transform_vertices, center_3d, camera_matrix,distortion_coefficients, img_test):
+def project_points_to_image_plane(t_cam_2_point, rotation, event_cam_left, points_3d, vertices,
+                                  camera_matrix, distortion_coefficients):
+    H_cam_2_point = np.eye(4)
+    H_cam_2_point[:3, :3] = rotation
+    H_cam_2_point[:3, 3] = t_cam_2_point
+    points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
+                                       distortion_coefficients)
+    points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
+    img_temp_cam = cv2.imread(event_cam_left)
+    img_temp_event_cam_1 = cv2.circle(img_temp_cam, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
+    object_3d_transform_points = np.matmul(H_cam_2_point, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[
+                                 :3, :].T
+    object_3d_transform_vertices = np.matmul(H_cam_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
+                                   :3, :].T
+    center_3d = np.mean(object_3d_transform_points, axis=0)
     # project 3d points to image plane
     object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
                                          distortion_coefficients)
@@ -181,18 +194,30 @@ def project_points_to_image_plane(object_3d_transform_points, object_3d_transfor
     object_2d_vertices, _ = cv2.projectPoints(object_3d_transform_vertices, np.eye(3), np.zeros(3), camera_matrix,
                                            distortion_coefficients)
     klt_2d_vertices = np.round(object_2d_vertices).astype(int)
+
     center_2d, _ = cv2.projectPoints(np.array([center_3d]), np.eye(3), np.zeros(3), camera_matrix,
                                      distortion_coefficients)
     center_2d = center_2d[0, 0]
 
     # create a mask by projecting the points on the image
-    mask = np.zeros_like(img_test)
+    mask = np.zeros_like(img_temp_cam)
     for point in object_2d_points:
         mask = cv2.circle(mask, tuple(point[0].astype(int)), 5, (255, 255, 255), -1)
     # fill the mask with the projected points
-    img_test = cv2.addWeighted(img_test, 1, mask, 0.3, 0)
+    img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
 
     for point in klt_2d_vertices:
-        img_test = cv2.circle(img_test, tuple(point[0].astype(int)), 8, (0, 0, 255), -1)
-    img_test = cv2.circle(img_test, tuple(center_2d.astype(int)), 8, (0, 0, 255), -1)
-    return img_test
+        img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 8, (0, 0, 255), -1)
+    img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 8, (0, 0, 255), -1)
+    return img_temp_cam
+
+def save_pose(H_cam_optical_2_point, center_3d, output_dir):
+    rotation = H_cam_optical_2_point[:3, :3]
+    rotmat = R.from_matrix(rotation)
+    euler_angles = rotmat.as_euler('xyz', degrees=True)
+    pose = np.concatenate((center_3d, euler_angles))
+
+    file = os.path.join(output_dir, "pose.json")
+    with open(file, 'a') as json_file:
+        json.dump(pose.tolist(), json_file)
+        json_file.write('\n')

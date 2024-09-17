@@ -133,10 +133,8 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
 
     t_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_point'])
     H_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_point'])
+    rotation = H_cam_optical_2_point[:3, :3]
     print(t_cam_optical_2_point)
-
-    points_2d = cv2.projectPoints(t_cam_optical_2_point, np.eye(3), np.zeros(3), camera_matrix, distortion_coefficients)
-    points_2d = np.round(points_2d[0]).astype(int)
 
     ####### Import object ply file and create a mesh for visualization #######
     obj_geometry = trimesh.load_mesh(obj_path)
@@ -148,14 +146,11 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
 
     # translate the object to match the center with the vicon camera frame
     vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d)
-    object_3d_transform_points = np.matmul(H_cam_optical_2_point, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[:3, :].T
-    object_3d_transform_vertices = np.matmul(H_cam_optical_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[:3, :].T
-    center_3d = np.mean(object_3d_transform_points, axis=0)
-
+    '''
     #################################### Exporting bounding box and pose values to a json file ####################################
     save_bbox_values(output_dir, object_3d_transform_points)
     # Save pose values to a json file
-    rotation = H_cam_optical_2_point[:3, :3]
+    
     rotmat = R.from_matrix(rotation)
     euler_angles = rotmat.as_euler('xyz', degrees=True)
     pose = np.concatenate((center_3d, euler_angles))
@@ -164,51 +159,21 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
     with open(file, 'a') as json_file:
         json.dump(pose.tolist(), json_file)
         json_file.write('\n')
-    ######################### RGB Image #####################################################################################################
-    img_rgb_temp = cv2.imread(rgb_img_path)
-    img_rgb_temp = cv2.circle(img_rgb_temp, tuple(points_2d[0][0]), 20, (255, 0, 0), -1)
-    img_rgb = project_points_to_image_plane(object_3d_transform_points, object_3d_transform_vertices, center_3d,
-                                            camera_matrix, distortion_coefficients, img_rgb_temp)
+    '''
+    ############ RGB Image ############
+    img_rgb = project_points_to_image_plane(t_cam_optical_2_point, rotation, rgb_img_path, points_3d, vertices,
+                                                    camera_matrix, distortion_coefficients)
 
     ############ Event camera 1 ############
 
     t_cam1_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_left'])
-    H_cam1_2_point = np.eye(4)
-    H_cam1_2_point[:3, :3] = rotation
-    H_cam1_2_point[:3, 3] = t_cam1_2_point
-    points_2d_cam1 = cv2.projectPoints(np.array([t_cam1_2_point]), np.eye(3), np.zeros(3), camera_mtx_cam1,
-                                       distortion_coeffs_cam1)
-    points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
-    print(points_2d_cam1)
-    # Display the 2d points on the image
-    img_temp_event_cam_1 = cv2.imread(event_cam_left)
-    img_temp_event_cam_1 = cv2.circle(img_temp_event_cam_1, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
-    object_3d_transform_points = np.matmul(H_cam1_2_point, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[
-                              :3, :].T
-    object_3d_transform_vertices = np.matmul(H_cam1_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
-                                :3, :].T
-    img_event_cam_1 = project_points_to_image_plane(object_3d_transform_points, object_3d_transform_vertices,
-                                                    center_3d, camera_mtx_cam1, distortion_coeffs_cam1, img_temp_event_cam_1)
+    img_event_cam_1 = project_points_to_image_plane(t_cam1_2_point, rotation, event_cam_left, points_3d, vertices,
+                                                    camera_mtx_cam1, distortion_coeffs_cam1)
 
     ############ Event camera 2 ############
     t_cam2_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_right'])
-    H_cam2_2_point = np.eye(4)
-    H_cam2_2_point[:3, :3] = rotation
-    H_cam2_2_point[:3, 3] = t_cam2_2_point
-
-    points_2d_cam2 = cv2.projectPoints(np.array([t_cam2_2_point]), np.eye(3), np.zeros(3), camera_mtx_cam2,
-                                       distortion_coeffs_cam2)
-    points_2d_cam2 = np.round(points_2d_cam2[0]).astype(int)
-    print(points_2d_cam2)
-    img_temp_event_cam_2 = cv2.imread(event_cam_right)
-    # Display the 2d points on the image
-    img_temp_event_cam_2 = cv2.circle(img_temp_event_cam_2, tuple(points_2d_cam2[0][0]), 5, (255, 0, 0), -1)
-    object_3d_transform_points = np.matmul(H_cam2_2_point, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[
-                              :3, :].T
-    object_3d_transform_vertices = np.matmul(H_cam2_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
-                                :3, :].T
-    img_event_cam_2 = project_points_to_image_plane(object_3d_transform_points, object_3d_transform_vertices, center_3d,
-                                              camera_mtx_cam2, distortion_coeffs_cam2, img_temp_event_cam_2)
+    img_event_cam_2 = project_points_to_image_plane(t_cam2_2_point, rotation, event_cam_right, points_3d, vertices,
+                                                    camera_mtx_cam2, distortion_coeffs_cam2)
 
     ########### Display the images ###########
     img_rgb = cv2.resize(img_rgb, (568, 426))
