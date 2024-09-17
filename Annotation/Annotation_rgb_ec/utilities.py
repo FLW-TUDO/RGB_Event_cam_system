@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import json
 import os
+import cv2
 
 def find_closest_elements(A, B):
     result = {}
@@ -31,7 +32,7 @@ def remove_delayed_timestamps(result_dict):
         del result_dict[key]
     return result_dict
 
-def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2_rgb, H_cam2_cam1):
+def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2_rgb, H_cam2_cam1, path):
     transformations = {}
     for i, v in data.items():
         if i == str(len(data) - 1):
@@ -97,14 +98,19 @@ def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2
                                                            'rotation': rotation.tolist(),
                                                            'timestamp': str(v['timestamp'])
                                                            }
-    with open('/home/eventcamera/data/transformations/transformations.json', 'w') as json_file:
+    with open(path + 'transformations.json', 'w') as json_file:
         json.dump(transformations, json_file, indent=2)
     print('saved transformations data')
 
 
 def get_translated_points_vertice(object_id, vertices, points_3d):
+    if object_id == 1:
+        translation_vector = np.array([0, 0, -0.072])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
     if object_id == 2:
-        translation_vector = np.array([-0.05, 0, 0])
+        translation_vector = np.array([0.0, 0, 0.072])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -166,3 +172,27 @@ def save_bbox_values(output_dir, object_3d_transform_points):
         json.dump(Bbox.tolist(), json_file)
         json_file.write('\n')
 
+
+def project_points_to_image_plane(object_3d_transform_points, object_3d_transform_vertices, center_3d, camera_matrix,distortion_coefficients, img_test):
+    # project 3d points to image plane
+    object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
+                                         distortion_coefficients)
+    object_2d_points = np.round(object_2d_points).astype(int)
+    object_2d_vertices, _ = cv2.projectPoints(object_3d_transform_vertices, np.eye(3), np.zeros(3), camera_matrix,
+                                           distortion_coefficients)
+    klt_2d_vertices = np.round(object_2d_vertices).astype(int)
+    center_2d, _ = cv2.projectPoints(np.array([center_3d]), np.eye(3), np.zeros(3), camera_matrix,
+                                     distortion_coefficients)
+    center_2d = center_2d[0, 0]
+
+    # create a mask by projecting the points on the image
+    mask = np.zeros_like(img_test)
+    for point in object_2d_points:
+        mask = cv2.circle(mask, tuple(point[0].astype(int)), 5, (255, 255, 255), -1)
+    # fill the mask with the projected points
+    img_test = cv2.addWeighted(img_test, 1, mask, 0.3, 0)
+
+    for point in klt_2d_vertices:
+        img_test = cv2.circle(img_test, tuple(point[0].astype(int)), 8, (0, 0, 255), -1)
+    img_test = cv2.circle(img_test, tuple(center_2d.astype(int)), 8, (0, 0, 255), -1)
+    return img_test
