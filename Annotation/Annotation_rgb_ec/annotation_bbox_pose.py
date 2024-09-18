@@ -129,12 +129,6 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
     rgb_img_path = rgb_image_path + str(rgb_t) + ".png"
     event_cam_left = path_event_cam_left_img + str(ec_left) + ".png"
     event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
-    #####################################################
-
-    t_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_point'])
-    H_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_point'])
-    rotation = H_cam_optical_2_point[:3, :3]
-    print(t_cam_optical_2_point)
 
     ####### Import object ply file and create a mesh for visualization #######
     obj_geometry = trimesh.load_mesh(obj_path)
@@ -144,36 +138,26 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
     points_3d = np.array(trimesh_object.sample(50000)) / 1000
     vertices = np.array(trimesh_object.vertices) / 1000
 
-    # translate the object to match the center with the vicon camera frame
+    # translate the imported object to match the center with the vicon camera frame
     vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d)
-    '''
-    #################################### Exporting bounding box and pose values to a json file ####################################
-    save_bbox_values(output_dir, object_3d_transform_points)
-    # Save pose values to a json file
-    
-    rotmat = R.from_matrix(rotation)
-    euler_angles = rotmat.as_euler('xyz', degrees=True)
-    pose = np.concatenate((center_3d, euler_angles))
 
-    file = os.path.join(output_dir, "pose.json")
-    with open(file, 'a') as json_file:
-        json.dump(pose.tolist(), json_file)
-        json_file.write('\n')
-    '''
     ############ RGB Image ############
+    t_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_point'])
+    H_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_point'])
+    rotation = H_cam_optical_2_point[:3, :3]
     img_rgb = project_points_to_image_plane(t_cam_optical_2_point, rotation, rgb_img_path, points_3d, vertices,
-                                                    camera_matrix, distortion_coefficients)
+                                                    camera_matrix, distortion_coefficients, output_dir, True)
 
     ############ Event camera 1 ############
 
     t_cam1_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_left'])
     img_event_cam_1 = project_points_to_image_plane(t_cam1_2_point, rotation, event_cam_left, points_3d, vertices,
-                                                    camera_mtx_cam1, distortion_coeffs_cam1)
+                                                    camera_mtx_cam1, distortion_coeffs_cam1,output_dir, False)
 
     ############ Event camera 2 ############
     t_cam2_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_right'])
     img_event_cam_2 = project_points_to_image_plane(t_cam2_2_point, rotation, event_cam_right, points_3d, vertices,
-                                                    camera_mtx_cam2, distortion_coeffs_cam2)
+                                                    camera_mtx_cam2, distortion_coeffs_cam2, output_dir, False)
 
     ########### Display the images ###########
     img_rgb = cv2.resize(img_rgb, (568, 426))

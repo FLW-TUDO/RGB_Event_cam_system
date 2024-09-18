@@ -55,8 +55,6 @@ def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2
         H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
         H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]),
                                                  H_base_2_cam_optical[:3, 3])
-        # Add H_cam_optical_2_base, timestamp to a dictionary. Append the H_cam_optical_2_base and timestamp on every iteration.
-        # This will give a list of dictionaries with H_cam_optical_2_base and timestamp
         t_x = object_array[str(v['timestamp'])]['translation'][0]
         t_y = object_array[str(v['timestamp'])]['translation'][1]
         t_z = object_array[str(v['timestamp'])]['translation'][2]
@@ -83,11 +81,8 @@ def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2
         H_cam1_2_point = np.matmul(H_cam1_2_rgb, H_rgb_2_point)
 
         t_cam1_2_point = H_cam1_2_point[:3, 3]
-        # print(t_cam1_2_point)
-        # project point (863,819) in cam1 coordinate to cam2 coordinate
         H_cam2_2_point = np.matmul(H_cam2_cam1, H_cam1_2_point)
         t_cam2_2_point = H_cam2_2_point[:3, 3]
-        # print(t_cam2_2_point)
         transformations[str(data[str(i)]['timestamp'])] = {'H_cam_optical_2_base': H_cam_optical_2_base.tolist(),
                                                            'H_cam_optical_2_point': H_cam_optical_2_point.tolist(),
                                                            'H_base_2_cam_vicon': H_base_2_cam_vicon.tolist(),
@@ -173,7 +168,7 @@ def save_bbox_values(output_dir, object_3d_transform_points):
         json_file.write('\n')
 
 def project_points_to_image_plane(t_cam_2_point, rotation, event_cam_left, points_3d, vertices,
-                                  camera_matrix, distortion_coefficients):
+                                  camera_matrix, distortion_coefficients, output_dir, save = False):
     H_cam_2_point = np.eye(4)
     H_cam_2_point[:3, :3] = rotation
     H_cam_2_point[:3, 3] = t_cam_2_point
@@ -187,6 +182,10 @@ def project_points_to_image_plane(t_cam_2_point, rotation, event_cam_left, point
     object_3d_transform_vertices = np.matmul(H_cam_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
                                    :3, :].T
     center_3d = np.mean(object_3d_transform_points, axis=0)
+    if save:
+        save_bbox_values(output_dir, object_3d_transform_points)
+        save_pose(H_cam_2_point, center_3d, output_dir)
+
     # project 3d points to image plane
     object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
                                          distortion_coefficients)
