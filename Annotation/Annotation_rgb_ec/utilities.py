@@ -20,76 +20,72 @@ def remove_extension_and_convert_to_int(arr):
     modified_arr = [int(file_name[:-4]) for file_name in arr if file_name.endswith('.png')]
     return modified_arr
 
-def remove_delayed_timestamps(result_dict):
+def remove_delayed_timestamps(result_dict, threshold):
     keys_to_remove = []
     for key, value in result_dict.items():
         deviation = abs(int(key) - int(value))
 
-        if deviation > 10000000:
+        if deviation > threshold:
             keys_to_remove.append(key)
 
     for key in keys_to_remove:
         del result_dict[key]
     return result_dict
 
-def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2_rgb, H_cam2_cam1, path):
+def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_cam_optical, vicon_object_data, H_cam1_2_rgb, H_cam2_cam1, path):
     transformations = {}
-    for i, v in data.items():
-        if i == str(len(data) - 1):
+    for i, v in vicon_data_camera_sys.items():
+        if i == str(len(vicon_data_camera_sys) - 1):
             continue
-        translation = data[str(i)]['translation']
-        rotation_quat = data[str(i)]['rotation']
+        translation = vicon_data_camera_sys[str(i)]['translation']
+        rotation_quat = vicon_data_camera_sys[str(i)]['rotation']
 
         # get rotation matrix from quaternion
         rotation = R.from_quat(rotation_quat).as_matrix()
         # make homogeneous transformation matrix
-        H_base_2_cam_vicon = np.eye(4)
-        H_base_2_cam_vicon[:3, :3] = rotation
-        H_base_2_cam_vicon[:3, 3] = translation
+        H_world_2_cam_vicon = np.eye(4)
+        H_world_2_cam_vicon[:3, :3] = rotation
+        H_world_2_cam_vicon[:3, 3] = translation
 
-        # make homogeneous transformation matrix from base to camera optical frame
-        H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
+        # make homogeneous transformation matrix from vicon to camera optical frame
+        H_world_2_rgb = np.matmul(H_world_2_cam_vicon, H_cam_vicon_2_cam_optical)
 
         # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
-        H_cam_optical_2_base = np.eye(4)
-        H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
-        H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]),
-                                                 H_base_2_cam_optical[:3, 3])
-        t_x = object_array[str(v['timestamp'])]['translation'][0]
-        t_y = object_array[str(v['timestamp'])]['translation'][1]
-        t_z = object_array[str(v['timestamp'])]['translation'][2]
-        r_x = object_array[str(v['timestamp'])]['rotation'][0]
-        r_y = object_array[str(v['timestamp'])]['rotation'][1]
-        r_z = object_array[str(v['timestamp'])]['rotation'][2]
-        r_w = object_array[str(v['timestamp'])]['rotation'][3]
+        H_rgb_2_world = np.eye(4)
+        H_rgb_2_world[:3, :3] = np.transpose(H_world_2_rgb[:3, :3])
+        H_rgb_2_world[:3, 3] = -np.matmul(np.transpose(H_world_2_rgb[:3, :3]),
+                                                 H_world_2_rgb[:3, 3])
+        t_x = vicon_object_data[str(v['timestamp'])]['translation'][0]
+        t_y = vicon_object_data[str(v['timestamp'])]['translation'][1]
+        t_z = vicon_object_data[str(v['timestamp'])]['translation'][2]
+        r_x = vicon_object_data[str(v['timestamp'])]['rotation'][0]
+        r_y = vicon_object_data[str(v['timestamp'])]['rotation'][1]
+        r_z = vicon_object_data[str(v['timestamp'])]['rotation'][2]
+        r_w = vicon_object_data[str(v['timestamp'])]['rotation'][3]
         rotation = R.from_quat([r_x, r_y, r_z, r_w]).as_matrix()
+        # world_2_object are the recorded vicon values for the object
+        H_world_2_object = np.eye(4)
+        H_world_2_object[:3, :3] = rotation
+        H_world_2_object[:3, 3] = [t_x, t_y, t_z]
 
-        H_v_2_point = np.eye(4)
-        H_v_2_point[:3, :3] = rotation
-        H_v_2_point[:3, 3] = [t_x, t_y, t_z]
+        H_rgb_2_object = np.matmul(H_rgb_2_world, H_world_2_object)
+        t_rgb_2_object = H_rgb_2_object[:3, 3]
 
-        H_cam_optical_2_point = np.matmul(H_cam_optical_2_base, H_v_2_point)
-        t_cam_optical_2_point = H_cam_optical_2_point[:3, 3]
-        H_base_2_cam_optical = np.matmul(H_base_2_cam_vicon, H_cam_vicon_2_cam_optical)
-        H_cam_optical_2_base = np.eye(4)
-        H_cam_optical_2_base[:3, :3] = np.transpose(H_base_2_cam_optical[:3, :3])
-        H_cam_optical_2_base[:3, 3] = -np.matmul(np.transpose(H_base_2_cam_optical[:3, :3]),
-                                                 H_base_2_cam_optical[:3, 3])
-        t_cam_optical_2_base = H_cam_optical_2_base[:3, 3]
-        H_rgb_2_point = H_cam_optical_2_point
-        # project point (x,y,z) in cam0 coordinate to cam1 coordinate
-        H_cam1_2_point = np.matmul(H_cam1_2_rgb, H_rgb_2_point)
+        t_rgb_2_world= H_rgb_2_world[:3, 3]
 
-        t_cam1_2_point = H_cam1_2_point[:3, 3]
-        H_cam2_2_point = np.matmul(H_cam2_cam1, H_cam1_2_point)
-        t_cam2_2_point = H_cam2_2_point[:3, 3]
-        transformations[str(data[str(i)]['timestamp'])] = {'H_cam_optical_2_base': H_cam_optical_2_base.tolist(),
-                                                           'H_cam_optical_2_point': H_cam_optical_2_point.tolist(),
-                                                           'H_base_2_cam_vicon': H_base_2_cam_vicon.tolist(),
-                                                           't_cam_optical_2_point': t_cam_optical_2_point.tolist(),
-                                                           't_cam_optical_2_base': t_cam_optical_2_base.tolist(),
-                                                           'point_event_cam_left': t_cam1_2_point.tolist(),
-                                                           'point_event_cam_right': t_cam2_2_point.tolist(),
+        # project object (x,y,z) in cam0 coordinate to cam1 coordinate
+        H_cam1_2_object = np.matmul(H_cam1_2_rgb, H_rgb_2_object)
+
+        t_cam1_2_object = H_cam1_2_object[:3, 3]
+        H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
+        t_cam2_2_object = H_cam2_2_object[:3, 3]
+        transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_cam_optical_2_vicon': H_rgb_2_world.tolist(),
+                                                           'H_cam_optical_2_object': H_rgb_2_object.tolist(),
+                                                           'H_vicon_2_cam_vicon': H_world_2_cam_vicon.tolist(),
+                                                           't_cam_optical_2_object': t_rgb_2_object.tolist(),
+                                                           't_cam_optical_2_vicon': t_rgb_2_world.tolist(),
+                                                           't_cam1_2_object': t_cam1_2_object.tolist(),
+                                                           't_cam2_2_object': t_cam2_2_object.tolist(),
                                                            'rotation': rotation.tolist(),
                                                            'timestamp': str(v['timestamp'])
                                                            }
@@ -98,7 +94,7 @@ def save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2
     print('saved transformations data')
 
 
-def get_translated_points_vertice(object_id, vertices, points_3d):
+def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
     if object_id == 1:
         translation_vector = np.array([0, 0, -0.072])
         vertices -= translation_vector
@@ -167,16 +163,19 @@ def save_bbox_values(output_dir, object_3d_transform_points):
         json.dump(Bbox.tolist(), json_file)
         json_file.write('\n')
 
-def project_points_to_image_plane(t_cam_2_point, rotation, event_cam_left, points_3d, vertices,
+def project_points_to_image_plane(t_cam_2_point, rotation, img_path, points_3d, vertices,
                                   camera_matrix, distortion_coefficients, output_dir, save = False):
     H_cam_2_point = np.eye(4)
     H_cam_2_point[:3, :3] = rotation
     H_cam_2_point[:3, 3] = t_cam_2_point
-    points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
-                                       distortion_coefficients)
-    points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
-    img_temp_cam = cv2.imread(event_cam_left)
-    img_temp_event_cam_1 = cv2.circle(img_temp_cam, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
+    #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
+     #                                  distortion_coefficients)
+    #points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
+    img_temp_cam = cv2.imread(img_path)
+    # rectify the image with the intrinsic parameters
+    img_temp_cam = cv2.undistort(img_temp_cam, camera_matrix, distortion_coefficients)
+
+    #img_temp_cam = cv2.circle(img_temp_cam, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
     object_3d_transform_points = np.matmul(H_cam_2_point, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[
                                  :3, :].T
     object_3d_transform_vertices = np.matmul(H_cam_2_point, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
@@ -201,13 +200,13 @@ def project_points_to_image_plane(t_cam_2_point, rotation, event_cam_left, point
     # create a mask by projecting the points on the image
     mask = np.zeros_like(img_temp_cam)
     for point in object_2d_points:
-        mask = cv2.circle(mask, tuple(point[0].astype(int)), 5, (255, 255, 255), -1)
+        mask = cv2.circle(mask, tuple(point[0].astype(int)), 2, (255, 255, 255), -1)
     # fill the mask with the projected points
     img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
 
     for point in klt_2d_vertices:
-        img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 8, (0, 0, 255), -1)
-    img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 8, (0, 0, 255), -1)
+        img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
+    img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
     return img_temp_cam
 
 def save_pose(H_cam_optical_2_point, center_3d, output_dir):

@@ -14,7 +14,8 @@ from utilities import *
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_id = 1
+object_id = 4
+threshold = 10000000
 # import object data from json file
 with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
     obj_model_data = json.load(file)
@@ -22,16 +23,16 @@ object_len_x = obj_model_data[str(object_id)]['size_x']
 object_len_y = obj_model_data[str(object_id)]['size_y']
 object_len_z = obj_model_data[str(object_id)]['size_z']
 
-path = '/home/eventcamera/data/dataset/pallet_4/'
-json_path_camera_sys = '/home/eventcamera/data/dataset/pallet_4/vicon_data/event_cam_sys.json'
-json_path_object = '/home/eventcamera/data/dataset/pallet_4/vicon_data/object.json'
-path_event_cam_left_img = '/home/eventcamera/data/dataset/pallet_4/event_cam_left/e2calib/'
-path_event_cam_right_img = '/home/eventcamera/data/dataset/pallet_4/event_cam_right/e2calib/'
-output_dir = '/home/eventcamera/data/dataset/pallet_4/annotation/'
-rgb_image_path = '/home/eventcamera/data/dataset/pallet_4/rgb/'
+path = '/home/eventcamera/data/dataset/blue_klt_1/'
+json_path_camera_sys = '/home/eventcamera/data/dataset/blue_klt_1/vicon_data/event_cam_sys.json'
+json_path_object = '/home/eventcamera/data/dataset/blue_klt_1/vicon_data/object.json'
+path_event_cam_left_img = '/home/eventcamera/data/dataset/blue_klt_1/event_cam_left/e2calib/'
+path_event_cam_right_img = '/home/eventcamera/data/dataset/blue_klt_1/event_cam_right/e2calib/'
+output_dir = '/home/eventcamera/data/dataset/blue_klt_1/annotation/'
+rgb_image_path = '/home/eventcamera/data/dataset/blue_klt_1/rgb/'
 obj_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/obj_' + str(object_id) + '.ply'
 
-# if path does not exist, create the path
+# if any of the above paths does not exist, create the path
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -39,10 +40,7 @@ for filename in os.listdir(output_dir):
         file_path = os.path.join(output_dir, filename)
         os.unlink(file_path)
 
-
-# with open(json_path_camera, 'r') as f:
-#    data_camera = json.load(f)
-
+# extract the time stamps from the images from all 3 cameras
 rgb_timestamp = os.listdir(rgb_image_path)
 rgb_timestamp.sort()
 
@@ -51,49 +49,52 @@ event_cam_left_timestamp.sort()
 
 event_cam_right_timestamp = os.listdir(path_event_cam_right_img)
 event_cam_right_timestamp.sort()
-H_cam_optical_2_base = np.eye(4)
 
+# Load the vicon data of the object that is recorded using vicon when the dataset was created.
 with open(json_path_object, 'r') as file:
-    object_array = json.load(file)
+    vicon_object_data = json.load(file)
 # extract only timestamp in a numpy array from dictionary loaded_array
-timestamp_object = []
+timestamp_vicon_object = []
 
-for k, v in object_array.items():
-    timestamp_object.append(v['timestamp'])
-timestamp_object = np.array(timestamp_object)
+for k, v in vicon_object_data.items():
+    timestamp_vicon_object.append(v['timestamp'])
+timestamp_vicon_object = np.array(timestamp_vicon_object)
 
 rgb_timestamp = remove_extension_and_convert_to_int(rgb_timestamp)
 event_cam_left_timestamp = remove_extension_and_convert_to_int(event_cam_left_timestamp)
 event_cam_right_timestamp = remove_extension_and_convert_to_int(event_cam_right_timestamp)
-# convert list of strings to list of integers
+
 # Associate timestamps in both event cameras to rgb camera timestamps.
-timestamp_object = list(map(int, timestamp_object))
-result_dict = find_closest_elements(rgb_timestamp,
-                                    timestamp_object)  # Output in format (rgb_timestamp, timestamp_object)
+timestamp_vicon_object = list(map(int, timestamp_vicon_object))
+dict_rgb_viconObject = find_closest_elements(rgb_timestamp,
+                                    timestamp_vicon_object)  # Output in format (rgb_timestamp, timestamp_vicon_object)
 #vicon_coord = []
-timestamps_closest_object = list(result_dict.values())
-result_dict_left = find_closest_elements(rgb_timestamp, event_cam_left_timestamp)
-result_dict_right = find_closest_elements(rgb_timestamp, event_cam_right_timestamp)
+timestamps_closest_object = list(dict_rgb_viconObject.values())
+dict_rgb_ec_left = find_closest_elements(rgb_timestamp, event_cam_left_timestamp)
+dict_rgb_ec_right = find_closest_elements(rgb_timestamp, event_cam_right_timestamp)
 
-result_dict_left = remove_delayed_timestamps(result_dict_left)
-result_dict_right = remove_delayed_timestamps(result_dict_right)
-result_dict = remove_delayed_timestamps(result_dict)
+# remove delayed timestamps. There could be timestamps which are further apart than the expected time difference between the images.
+dict_rgb_ec_left = remove_delayed_timestamps(dict_rgb_ec_left, threshold)
+dict_rgb_ec_right = remove_delayed_timestamps(dict_rgb_ec_right, threshold)
+result_dict = remove_delayed_timestamps(dict_rgb_viconObject, threshold)
 
-timestamp_closest_ec_left = list(result_dict_left.values())
-timestamp_closest_ec_right = list(result_dict_right.values())
+timestamp_closest_ec_left = list(dict_rgb_ec_left.values())
+timestamp_closest_ec_right = list(dict_rgb_ec_right.values())
 
-translations_with_timestamps = {
-    timestamp: np.array(object_array[str(timestamp)]["translation"])
+# vicon object data contains timestamped data which is much larger than rgb timestamped images. We only need
+# the data for vicon object that corresponds to rgb timestamps. Hence, we extract the data for the trans and rot for the closest timestamps of the object
+vicon_object_translations_with_timestamps = {
+    timestamp: np.array(vicon_object_data[str(timestamp)]["translation"])
     for timestamp in timestamps_closest_object}
-rotations_with_timestamps = {
-    timestamp: np.array(object_array[str(timestamp)]["rotation"])
+vicon_object_rotations_with_timestamps = {
+    timestamp: np.array(vicon_object_data[str(timestamp)]["rotation"])
     for timestamp in timestamps_closest_object
 }
 
 # load camera parameters and transformation data from json file
 with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'r') as file:
     data = json.load(file)
-
+# cam1 is event camera left and cam2 is event camera right
 camera_matrix = np.array(data['camera_matrix'])
 distortion_coefficients = np.array(data['distortion_coefficients'])
 camera_mtx_cam2 = np.array(data['camera_mtx_cam2'])
@@ -107,8 +108,8 @@ H_cam2_cam1 = np.array(data['H_cam2_cam1'])
 ######### Here we save the transformations for the dataset. Annotations are not happening here. #########
 # Read the vicon coordinates of the even camera system. Traverse through the coordinates
 with open(json_path_camera_sys, 'r') as f:
-    data = json.load(f)
-save_transformations(data, H_cam_vicon_2_cam_optical, object_array, H_cam1_2_rgb, H_cam2_cam1, path)
+    vicon_data_camera_sys = json.load(f)
+save_transformations(vicon_data_camera_sys, H_cam_vicon_2_cam_optical, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
 
 ################## ANNOTATIONS #################
 count = 0
@@ -119,7 +120,7 @@ timestamp_closest_ec_right = sorted(timestamp_closest_ec_right)
 timestamp_closest_ec_left = sorted(timestamp_closest_ec_left)
 rgb_timestamp = sorted(rgb_timestamp)
 
-for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with_timestamps.items()):
+for (kr, vr), (k, v) in zip(vicon_object_rotations_with_timestamps.items(), vicon_object_translations_with_timestamps.items()):
     # kr and k are timestamps for respective values
     print(kr)
     ############# Defining paths for images #############
@@ -139,24 +140,25 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
     vertices = np.array(trimesh_object.vertices) / 1000
 
     # translate the imported object to match the center with the vicon camera frame
-    vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d)
+    vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d, object_len_z)
 
     ############ RGB Image ############
-    t_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_point'])
-    H_cam_optical_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_point'])
-    rotation = H_cam_optical_2_point[:3, :3]
-    img_rgb = project_points_to_image_plane(t_cam_optical_2_point, rotation, rgb_img_path, points_3d, vertices,
+    t_cam_optical_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_object'])
+    H_cam_optical_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_object'])
+    rotation = H_cam_optical_2_object[:3, :3]
+    # True is given if you want to save the bounding boy and pose data of the object in the image.
+    img_rgb = project_points_to_image_plane(t_cam_optical_2_object, rotation, rgb_img_path, points_3d, vertices,
                                                     camera_matrix, distortion_coefficients, output_dir, True)
 
     ############ Event camera 1 ############
 
-    t_cam1_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_left'])
-    img_event_cam_1 = project_points_to_image_plane(t_cam1_2_point, rotation, event_cam_left, points_3d, vertices,
+    t_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam1_2_object'])
+    img_event_cam_1 = project_points_to_image_plane(t_cam1_2_object, rotation, event_cam_left, points_3d, vertices,
                                                     camera_mtx_cam1, distortion_coeffs_cam1,output_dir, False)
 
     ############ Event camera 2 ############
-    t_cam2_2_point = np.array(projected_point_rgb_ec1_ec2[str(k)]['point_event_cam_right'])
-    img_event_cam_2 = project_points_to_image_plane(t_cam2_2_point, rotation, event_cam_right, points_3d, vertices,
+    t_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam2_2_object'])
+    img_event_cam_2 = project_points_to_image_plane(t_cam2_2_object, rotation, event_cam_right, points_3d, vertices,
                                                     camera_mtx_cam2, distortion_coeffs_cam2, output_dir, False)
 
     ########### Display the images ###########
@@ -164,7 +166,7 @@ for (kr, vr), (k, v) in zip(rotations_with_timestamps.items(), translations_with
     img_event_cam_1 = cv2.resize(img_event_cam_1, (568, 426))
     img_event_cam_2 = cv2.resize(img_event_cam_2, (568, 426))
 
-    concatenated_images = np.hstack((img_rgb, img_event_cam_1, img_event_cam_2))
+    concatenated_images = np.hstack((img_event_cam_1, img_rgb, img_event_cam_2))
     output_path = os.path.join(output_dir, f'image_{count:03d}.jpg')
     cv2.imwrite(output_path, concatenated_images)
 
