@@ -14,7 +14,7 @@ from utilities import *
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_id = 4
+object_id = 1
 threshold = 10000000
 # import object data from json file
 with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
@@ -23,13 +23,13 @@ object_len_x = obj_model_data[str(object_id)]['size_x']
 object_len_y = obj_model_data[str(object_id)]['size_y']
 object_len_z = obj_model_data[str(object_id)]['size_z']
 
-path = '/home/eventcamera/data/dataset/blue_klt_1/'
-json_path_camera_sys = '/home/eventcamera/data/dataset/blue_klt_1/vicon_data/event_cam_sys.json'
-json_path_object = '/home/eventcamera/data/dataset/blue_klt_1/vicon_data/object.json'
-path_event_cam_left_img = '/home/eventcamera/data/dataset/blue_klt_1/event_cam_left/e2calib/'
-path_event_cam_right_img = '/home/eventcamera/data/dataset/blue_klt_1/event_cam_right/e2calib/'
-output_dir = '/home/eventcamera/data/dataset/blue_klt_1/annotation/'
-rgb_image_path = '/home/eventcamera/data/dataset/blue_klt_1/rgb/'
+path = '/home/eventcamera/data/dataset/pallet_3/'
+json_path_camera_sys = '/home/eventcamera/data/dataset/pallet_3/vicon_data/event_cam_sys.json'
+json_path_object = '/home/eventcamera/data/dataset/pallet_3/vicon_data/object.json'
+path_event_cam_left_img = '/home/eventcamera/data/dataset/pallet_3/event_cam_left/e2calib/'
+path_event_cam_right_img = '/home/eventcamera/data/dataset/pallet_3/event_cam_right/e2calib/'
+output_dir = '/home/eventcamera/data/dataset/pallet_3/annotation/'
+rgb_image_path = '/home/eventcamera/data/dataset/pallet_3/rgb/'
 obj_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/obj_' + str(object_id) + '.ply'
 
 # if any of the above paths does not exist, create the path
@@ -101,7 +101,7 @@ camera_mtx_cam2 = np.array(data['camera_mtx_cam2'])
 distortion_coeffs_cam2 = np.array(data['distortion_coeffs_cam2'])
 camera_mtx_cam1 = np.array(data['camera_mtx_cam1'])
 distortion_coeffs_cam1 = np.array(data['distortion_coeffs_cam1'])
-H_cam_vicon_2_cam_optical = np.array(data['H_cam_vicon_2_cam_optical'])
+H_cam_vicon_2_rgb = np.array(data['H_cam_vicon_2_cam_optical'])
 H_cam1_2_rgb = np.array(data['H_cam1_2_rgb'])
 H_cam2_cam1 = np.array(data['H_cam2_cam1'])
 
@@ -109,7 +109,7 @@ H_cam2_cam1 = np.array(data['H_cam2_cam1'])
 # Read the vicon coordinates of the even camera system. Traverse through the coordinates
 with open(json_path_camera_sys, 'r') as f:
     vicon_data_camera_sys = json.load(f)
-save_transformations(vicon_data_camera_sys, H_cam_vicon_2_cam_optical, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
+save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
 
 ################## ANNOTATIONS #################
 count = 0
@@ -143,11 +143,11 @@ for (kr, vr), (k, v) in zip(vicon_object_rotations_with_timestamps.items(), vico
     vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d, object_len_z)
 
     ############ RGB Image ############
-    t_cam_optical_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_cam_optical_2_object'])
-    H_cam_optical_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam_optical_2_object'])
-    rotation = H_cam_optical_2_object[:3, :3]
-    # True is given if you want to save the bounding boy and pose data of the object in the image.
-    img_rgb = project_points_to_image_plane(t_cam_optical_2_object, rotation, rgb_img_path, points_3d, vertices,
+    t_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['t_rgb_2_object'])
+    H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
+    rotation = H_rgb_2_object[:3, :3]
+    # True is given if you want to save the bounding box and pose data of the object.
+    img_rgb = project_points_to_image_plane(t_rgb_2_object, rotation, rgb_img_path, points_3d, vertices,
                                                     camera_matrix, distortion_coefficients, output_dir, True)
 
     ############ Event camera 1 ############

@@ -32,23 +32,23 @@ def remove_delayed_timestamps(result_dict, threshold):
         del result_dict[key]
     return result_dict
 
-def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_cam_optical, vicon_object_data, H_cam1_2_rgb, H_cam2_cam1, path):
+def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data, H_cam1_2_rgb, H_cam2_cam1, path):
     transformations = {}
     for i, v in vicon_data_camera_sys.items():
         if i == str(len(vicon_data_camera_sys) - 1):
             continue
-        translation = vicon_data_camera_sys[str(i)]['translation']
-        rotation_quat = vicon_data_camera_sys[str(i)]['rotation']
+        vicon_cam_translation = vicon_data_camera_sys[str(i)]['translation']
+        vicon_cam_rotation_quat = vicon_data_camera_sys[str(i)]['rotation']
 
         # get rotation matrix from quaternion
-        rotation = R.from_quat(rotation_quat).as_matrix()
+        rotation_vicon_cam = R.from_quat(vicon_cam_rotation_quat).as_matrix()
         # make homogeneous transformation matrix
         H_world_2_cam_vicon = np.eye(4)
-        H_world_2_cam_vicon[:3, :3] = rotation
-        H_world_2_cam_vicon[:3, 3] = translation
+        H_world_2_cam_vicon[:3, :3] = rotation_vicon_cam
+        H_world_2_cam_vicon[:3, 3] = vicon_cam_translation
 
         # make homogeneous transformation matrix from vicon to camera optical frame
-        H_world_2_rgb = np.matmul(H_world_2_cam_vicon, H_cam_vicon_2_cam_optical)
+        H_world_2_rgb = np.matmul(H_world_2_cam_vicon, H_cam_vicon_2_rgb)
 
         # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
         H_rgb_2_world = np.eye(4)
@@ -71,19 +71,15 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_cam_optical, vicon
         H_rgb_2_object = np.matmul(H_rgb_2_world, H_world_2_object)
         t_rgb_2_object = H_rgb_2_object[:3, 3]
 
-        t_rgb_2_world= H_rgb_2_world[:3, 3]
-
-        # project object (x,y,z) in cam0 coordinate to cam1 coordinate
+        # project object (x,y,z) in rgb coordinate to cam1 coordinate
         H_cam1_2_object = np.matmul(H_cam1_2_rgb, H_rgb_2_object)
-
         t_cam1_2_object = H_cam1_2_object[:3, 3]
         H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
         t_cam2_2_object = H_cam2_2_object[:3, 3]
-        transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_cam_optical_2_vicon': H_rgb_2_world.tolist(),
-                                                           'H_cam_optical_2_object': H_rgb_2_object.tolist(),
-                                                           'H_vicon_2_cam_vicon': H_world_2_cam_vicon.tolist(),
-                                                           't_cam_optical_2_object': t_rgb_2_object.tolist(),
-                                                           't_cam_optical_2_vicon': t_rgb_2_world.tolist(),
+        transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_rgb_2_vicon': H_rgb_2_world.tolist(),
+                                                           'H_rgb_2_object': H_rgb_2_object.tolist(),
+                                                           'H_world_2_cam_vicon': H_world_2_cam_vicon.tolist(),
+                                                           't_rgb_2_object': t_rgb_2_object.tolist(),
                                                            't_cam1_2_object': t_cam1_2_object.tolist(),
                                                            't_cam2_2_object': t_cam2_2_object.tolist(),
                                                            'rotation': rotation.tolist(),
