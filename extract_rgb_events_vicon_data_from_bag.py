@@ -19,12 +19,12 @@ from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image
 import numpy as np
 from datetime import datetime
-
+object_name = 'pallet_3'
 # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
 # /dvxplorer_right/events from the bag file.
 # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-path = '/home/eventcamera/data/dataset/pallet_4'
-bag = rosbag.Bag('/home/eventcamera/data/dataset/pallet_4.bag')
+path = '/home/eventcamera/data/dataset/' + object_name + '/'
+bag = rosbag.Bag('/home/eventcamera/data/dataset/' + object_name + '/' + object_name + '.bag')
 # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
 events_topic_left = '/dvxplorer_left/events'
 events_topic_right = '/dvxplorer_right/events'
@@ -108,6 +108,7 @@ with open(path + '/vicon_data/event_cam_sys.json', 'w') as json_file:
 print('saved event cam data')
 
 '''
+
 for top, msg, tim in bag.read_messages(vicon_object):
     t = msg.header.stamp
     translation = [
@@ -126,7 +127,7 @@ for top, msg, tim in bag.read_messages(vicon_object):
 with open(path + '/vicon_data/object.json', 'w') as json_file:
     json.dump(vicon_data, json_file, indent=2)
 print('saved object data')
-'''
+
 image_topic = bag.read_messages(rgb_topic)
 if not os.path.exists(path + '/rgb'):
     os.makedirs(path + '/rgb')
@@ -141,7 +142,7 @@ for k, b in enumerate(image_topic):
     # print('saved: ',)
 
 print('Done Extracting RGB images')
-'''
+
 # Close the bag file
 bag.close()
 

@@ -15,17 +15,15 @@ from scipy.spatial.transform import Rotation as R
 square_size_meter = 0.125
 image_size = (2048, 1536)
 # Third calib is the original calibration as on 20 Aug 2024
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/fourth_calib'
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib_orig'
 checker_board_size = (8, 5)
-#params = [2001.0250442780605, 2001.2767496004499, 970.1619103491635, 684.6369964551955]
-params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
+#params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
 #distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
-distortion_coefficients = np.array([-0.15753562435107302, 0.07457419544260213, -0.0041819685517017246, -0.006048084700111363])
+distortion_coefficients = np.array([-0.16662668463462832,   0.09713587034707222,
+    0.00044649384097793574,    0.0006466275306382167])
 # =============================================================================
 
 json_path = os.path.join(data_path, 'vicon_coordinates.json')
-camera_matrix = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
-
 images_path = os.path.join(data_path, 'images')
 num_of_images = len(os.listdir(images_path))
 ###############
@@ -63,9 +61,19 @@ for img_id in range(num_of_images):
         imgpoints.append(corners2)
     #i += 1
 # calibrate camera
-params = [2001.0250442780605, 2001.2767496004499, 970.1619103491635, 684.6369964551955]
-mtx_initial = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
-dist_initial = np.array([-0.16662668463462832, 0.09713587034707222, 0.00044649384097793574, 0.0006466275306382167])
+# extract camera params from the json file
+with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'r') as f:
+    data = json.load(f)
+mtx_initial = data['camera_matrix']
+# convert to numpy array
+mtx_initial = np.array([[mtx_initial[0][0], 0, mtx_initial[0][2]], [0, mtx_initial[1][1], mtx_initial[1][2]], [0, 0, 1]])
+dist_initial = data['distortion_coefficients']
+dist_initial = np.array(dist_initial)
+#params = [1834.486266291348, 1847.3890358463243, 1007.5551878599326, 719.0925998795733]
+#params = [1841.9129156705603, 1845.9591700061214, 930.8966995563184, 697.18190504#26024]
+#mtx_initial = np.array([[params[0], 0, params[2]], [0, params[1], params[3]], [0, 0, 1]])
+#dist_initial = np.array([-0.1686216447107, 0.0381671597, 0.1195, -0.00077342, 0.0003974])
+#dist_initial = np.array([-0.15240650306881118, 0.05910497555065293, -0.004109817709626536, -0.004845547797613459])
 # use flag
 flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
          cv2.CALIB_FIX_PRINCIPAL_POINT +
@@ -158,3 +166,12 @@ H = np.hstack((R, t))
 H = np.vstack((H, np.array([[0, 0, 0, 1]])))
 print('H_viconCam_2_cam_optical = ')
 print(H)
+# append the H_viconCam_2_cam_optical to already existing json file with data, as a dictionary entry
+
+with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'r') as f:
+    read_data = json.load(f)
+    read_data['H_cam_vicon_2_cam_optical'] = H.tolist()
+
+with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'w') as f:
+    json.dump(read_data, f, indent=2)
+

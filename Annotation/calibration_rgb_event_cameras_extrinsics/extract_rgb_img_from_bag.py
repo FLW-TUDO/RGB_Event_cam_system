@@ -6,13 +6,17 @@ from cv_bridge import CvBridge
 import numpy as np
 import os
 
-output_dir = '/home/eventcamera/data/test_cam/'
-BAGFILE = '/home/eventcamera/data/test_cam/test3.bag'
+output_dir = '/home/eventcamera/Eventcamera/calibration_data/RGB_event_stereo_30_sep/reconstructed_events/cam0/'
+BAGFILE = '/home/eventcamera/Eventcamera/calibration_data/RGB_event_stereo_30_sep/event_images.bag'
 #os.mkdir(output_dir)
+
+# if cam0 not there then create it
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
 if __name__ == '__main__':
     bag = rosbag.Bag(BAGFILE)
-    TOPIC = '/rgb/image_raw7_throttle'
+    TOPIC = '/rgb/image_raw'
     DESCRIPTION = 'color_'
     image_topic = bag.read_messages(TOPIC)
     i = 0
@@ -25,7 +29,7 @@ if __name__ == '__main__':
         #cv_image = cv_image[45:480,0:595]
         #cv_image = cv2.resize(cv_image, (640,480))
         cv2.imwrite(output_dir + str(b.timestamp) + '.png', cv_image)
-        #print('saved: ',)
+        print('saved: ',i)
         i += 1
 
 
