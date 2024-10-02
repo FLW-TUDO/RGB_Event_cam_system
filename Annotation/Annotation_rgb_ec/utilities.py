@@ -115,13 +115,13 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d = np.dot(points_3d, rotation_matrix)
 
     if object_id == 6:
-        translation_vector = np.array([0, 0, 0.03])
+        translation_vector = np.array([0, 0, -object_len_z/2000])
         #translation_vector = np.array([0, 0.05, 0])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 8:
-        translation_vector = np.array([0, 0, 0])
+        translation_vector = np.array([0, 0, 0.08])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -129,12 +129,12 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
         vertices = np.dot(vertices, rotation_matrix)
         points_3d = np.dot(points_3d, rotation_matrix)
-        translation_vector = np.array([0, 0.05, 0])
+        translation_vector = np.array([0, 0, 0.0])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 10:
-        translation_vector = np.array([0, 0, 0])
+        translation_vector = np.array([0, 0.0, 0])
         vertices -= translation_vector
         points_3d -= translation_vector
 

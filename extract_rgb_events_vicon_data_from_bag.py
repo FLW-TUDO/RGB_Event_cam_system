@@ -19,7 +19,9 @@ from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image
 import numpy as np
 from datetime import datetime
-object_name = 'pallet_3'
+object = 'dell'
+num = '3'
+object_name = object + '_' + num
 # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
 # /dvxplorer_right/events from the bag file.
 # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
@@ -29,7 +31,7 @@ bag = rosbag.Bag('/home/eventcamera/data/dataset/' + object_name + '/' + object_
 events_topic_left = '/dvxplorer_left/events'
 events_topic_right = '/dvxplorer_right/events'
 vicon_topic_cam_sys = '/vicon/event_cam_sys/event_cam_sys'
-vicon_object = '/vicon/pallet_ec/pallet_ec'
+vicon_object = '/vicon/' + object + '/' + object
 rgb_topic = '/rgb/image_raw'
 events_left = []
 events_right =[]
