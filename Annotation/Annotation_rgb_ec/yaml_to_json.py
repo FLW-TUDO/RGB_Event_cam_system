@@ -3,7 +3,7 @@ import yaml
 import numpy as np
 import json
 
-with open('/home/eventcamera/Eventcamera/calibration_data/RGB_event_stereo_28_sep/images-camchain.yaml') as file:
+with open('/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_2/images-camchain.yaml') as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
     camchain = yaml.load(file, Loader=yaml.FullLoader)

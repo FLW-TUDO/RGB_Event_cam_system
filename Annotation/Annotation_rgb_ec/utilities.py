@@ -116,7 +116,6 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
 
     if object_id == 6:
         translation_vector = np.array([0, 0, -object_len_z/2000])
-        #translation_vector = np.array([0, 0.05, 0])
         vertices -= translation_vector
         points_3d -= translation_vector
 
