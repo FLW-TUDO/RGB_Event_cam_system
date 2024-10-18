@@ -4,6 +4,28 @@ import json
 import os
 import cv2
 
+# if the timestamp recorded in rgb camera are for a longer duration than event cameras then delete
+# all the rgb timestamps which are greater than max timestamp in event camera.
+def check_max_timestamp_rgb_event(rgb_timestamp, event_cam_left_timestamp, event_cam_right_timestamp):
+    rgb_timestamp = remove_extension(rgb_timestamp)
+    event_cam_left_timestamp = remove_extension(event_cam_left_timestamp)
+    event_cam_right_timestamp = remove_extension(event_cam_right_timestamp)
+
+    indexes = []
+    if (int(rgb_timestamp[-1]) > int(event_cam_left_timestamp[-1])) or (int(rgb_timestamp[-1]) > int(event_cam_right_timestamp[-1])):
+        for i in range(len(rgb_timestamp)):
+            #print(i)
+            if (int(rgb_timestamp[i]) > (int(event_cam_left_timestamp[-1]))) or (int(rgb_timestamp[i]) > int(event_cam_right_timestamp[-1])):
+                # store these indexes in a list and delete all the elements in rgb_timestamp corresponding to these indexes
+                indexes.append(i)
+        # sort indexes from highest to lowest
+        indexes.sort(reverse=True)
+        for i in indexes:
+            del rgb_timestamp[i]
+    #convert rgb_timestamp to int
+    rgb_timestamp = [int(i) for i in rgb_timestamp]
+    return rgb_timestamp
+
 def find_closest_elements(A, B):
     result = {}
 
@@ -14,6 +36,9 @@ def find_closest_elements(A, B):
 
     return result
 
+def remove_extension(arr1):
+    modified_arr = [file_name[:-4] for file_name in arr1 if file_name.endswith('.png')]
+    return modified_arr
 
 def remove_extension_and_convert_to_int(arr):
     # Remove ".png" extension and convert to integers
@@ -85,7 +110,7 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
                                                            'rotation': rotation.tolist(),
                                                            'timestamp': str(v['timestamp'])
                                                            }
-    with open(path + 'transformations.json', 'w') as json_file:
+    with open(path + '_transformations.json', 'w') as json_file:
         json.dump(transformations, json_file, indent=2)
     print('saved transformations data')
 
@@ -102,7 +127,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 3:
-        translation_vector = np.array([-0.05, 0, 0])
+        translation_vector = np.array([0.0, 0, -object_len_z/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -120,7 +145,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 8:
-        translation_vector = np.array([0, 0, 0.08])
+        translation_vector = np.array([0, 0, 0.05])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -139,26 +164,28 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
 
     return vertices, points_3d
 
-def save_bbox_values(output_dir, object_3d_transform_points):
+def save_bbox_values(output_dir, object_3d_transform_points, timestamp):
     #################################### Exporting bounding box and pose values to a json file ####################################
-
+    # transform object_3d_transform_points of size (8,1,2) to (8,2)
+    object_3d_transform_points = object_3d_transform_points.reshape(-1, 2)
     # compute xmin, xmax, ymin, ymax, zmin, zmax
-    xmin = np.min(object_3d_transform_points[:, 0])
-    xmax = np.max(object_3d_transform_points[:, 0])
-    ymin = np.min(object_3d_transform_points[:, 1])
-    ymax = np.max(object_3d_transform_points[:, 1])
-    zmin = np.min(object_3d_transform_points[:, 2])
-    zmax = np.max(object_3d_transform_points[:, 2])
+    xmin = float(np.min(object_3d_transform_points[:, 0]))
+    xmax = float(np.max(object_3d_transform_points[:, 0]))
+    ymin = float(np.min(object_3d_transform_points[:, 1]))
+    ymax = float(np.max(object_3d_transform_points[:, 1]))
+    #zmin = np.min(object_3d_transform_points[:, 2])
+    #zmax = np.max(object_3d_transform_points[:, 2])
     # Save above values in an array
-    Bbox = np.array([xmin, xmax, ymin, ymax, zmin, zmax])
-
+    #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax, zmin, zmax])
+    #Bbox = {'timestamp': timestamp, 'xmin': Bbox[1], 'xmax': Bbox[2], 'ymin': Bbox[3], 'ymax': Bbox[4], 'zmin': Bbox[5], zmax: Bbox[6]}
+    #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
+    Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax}
     # append the Bbox values to a json file row wise
-    file = os.path.join(output_dir, "bounding_box_labels.json")
+    file = output_dir + "_bounding_box_labels.json"
     with open(file, 'a') as json_file:
-        json.dump(Bbox.tolist(), json_file)
-        json_file.write('\n')
+        json_file.write(json.dumps(Bbox) + '\n')
 
-def project_points_to_image_plane(H_cam_2_object, img_path, points_3d, vertices,
+def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertices,
                                   camera_matrix, distortion_coefficients, output_dir, save = False):
     #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
      #                                  distortion_coefficients)
@@ -173,9 +200,7 @@ def project_points_to_image_plane(H_cam_2_object, img_path, points_3d, vertices,
     object_3d_transform_vertices = np.matmul(H_cam_2_object, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
                                    :3, :].T
     center_3d = np.mean(object_3d_transform_points, axis=0)
-    if save:
-        save_bbox_values(output_dir, object_3d_transform_points)
-        save_pose(H_cam_2_object, center_3d, output_dir)
+
 
     # project 3d points to image plane
     object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
@@ -183,11 +208,14 @@ def project_points_to_image_plane(H_cam_2_object, img_path, points_3d, vertices,
     object_2d_points = np.round(object_2d_points).astype(int)
     object_2d_vertices, _ = cv2.projectPoints(object_3d_transform_vertices, np.eye(3), np.zeros(3), camera_matrix,
                                            distortion_coefficients)
-    klt_2d_vertices = np.round(object_2d_vertices).astype(int)
+    object_2d_vertices = np.round(object_2d_vertices).astype(int)
 
     center_2d, _ = cv2.projectPoints(np.array([center_3d]), np.eye(3), np.zeros(3), camera_matrix,
                                      distortion_coefficients)
     center_2d = center_2d[0, 0]
+    if save:
+        save_bbox_values(output_dir, object_2d_vertices, k)
+        save_pose(H_cam_2_object, center_3d, output_dir, k)
 
     # create a mask by projecting the points on the image
     mask = np.zeros_like(img_temp_cam)
@@ -196,20 +224,22 @@ def project_points_to_image_plane(H_cam_2_object, img_path, points_3d, vertices,
     # fill the mask with the projected points
     img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
 
-    for point in klt_2d_vertices:
+    for point in object_2d_vertices:
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
     img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
     # cv2 show
     #cv2.imshow('img', cv2.resize(img_temp_cam, (0, 0), fx=0.5, fy=0.5))
     return img_temp_cam
 
-def save_pose(H_cam_optical_2_point, center_3d, output_dir):
+def save_pose(H_cam_optical_2_point, center_3d, output_dir, timestamp):
     rotation = H_cam_optical_2_point[:3, :3]
     rotmat = R.from_matrix(rotation)
     euler_angles = rotmat.as_euler('xyz', degrees=True)
-    pose = np.concatenate((center_3d, euler_angles))
+    pose = np.concatenate((center_3d, euler_angles)).tolist()
+    # save above to a json file
+    data = [timestamp, pose]
 
-    file = os.path.join(output_dir, "pose.json")
+    # append the Bbox values to a json file row wise
+    file = output_dir + "_pose.json"
     with open(file, 'a') as json_file:
-        json.dump(pose.tolist(), json_file)
-        json_file.write('\n')
+        json_file.write(json.dumps(data) + '\n')

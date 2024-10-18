@@ -10,8 +10,8 @@ from utilities import *
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_name = 'dell_1'
-object_id = 9
+object_name = 'big_klt_1'
+object_id = 3
 threshold = 10000000
 # import object data from json file
 with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
@@ -20,12 +20,15 @@ object_len_x = obj_model_data[str(object_id)]['size_x']
 object_len_y = obj_model_data[str(object_id)]['size_y']
 object_len_z = obj_model_data[str(object_id)]['size_z']
 
-path = '/home/eventcamera/data/dataset/' + object_name
+path = '/home/eventcamera/data/dataset/' + object_name + '/' + object_name
 json_path_camera_sys = '/home/eventcamera/data/dataset/' + object_name + '/vicon_data/event_cam_sys.json'
 json_path_object = '/home/eventcamera/data/dataset/' + object_name + '/vicon_data/object.json'
 path_event_cam_left_img = '/home/eventcamera/data/dataset/' + object_name + '/event_cam_left/e2calib/'
 path_event_cam_right_img = '/home/eventcamera/data/dataset/' + object_name + '/event_cam_right/e2calib/'
 output_dir = '/home/eventcamera/data/dataset/' + object_name + '/annotation/'
+output_dir_rgb = '/home/eventcamera/data/dataset/' + object_name + '/annotation/rgb'
+output_dir_event_cam_left = '/home/eventcamera/data/dataset/' + object_name + '/annotation/ec_left'
+output_dir_event_cam_right = '/home/eventcamera/data/dataset/' + object_name + '/annotation/ec_right'
 rgb_image_path = '/home/eventcamera/data/dataset/' + object_name + '/rgb/'
 obj_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/obj_' + str(object_id) + '.ply'
 
@@ -47,6 +50,8 @@ event_cam_left_timestamp.sort()
 event_cam_right_timestamp = os.listdir(path_event_cam_right_img)
 event_cam_right_timestamp.sort()
 
+rgb_timestamp = check_max_timestamp_rgb_event(rgb_timestamp, event_cam_left_timestamp, event_cam_right_timestamp)
+
 # Load the vicon data of the object that is recorded using vicon when the dataset was created.
 with open(json_path_object, 'r') as file:
     vicon_object_data = json.load(file)
@@ -57,7 +62,7 @@ for k, v in vicon_object_data.items():
     timestamp_vicon_object.append(v['timestamp'])
 timestamp_vicon_object = np.array(timestamp_vicon_object)
 
-rgb_timestamp = remove_extension_and_convert_to_int(rgb_timestamp)
+#rgb_timestamp = remove_extension_and_convert_to_int(rgb_timestamp)
 event_cam_left_timestamp = remove_extension_and_convert_to_int(event_cam_left_timestamp)
 event_cam_right_timestamp = remove_extension_and_convert_to_int(event_cam_right_timestamp)
 
@@ -110,7 +115,7 @@ save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data
 
 ################## ANNOTATIONS #################
 count = 0
-with open(path + 'transformations.json', 'r') as file:
+with open(path + '_transformations.json', 'r') as file:
     projected_point_rgb_ec1_ec2 = json.load(file)
 
 timestamp_closest_ec_right = sorted(timestamp_closest_ec_right)
@@ -119,7 +124,7 @@ rgb_timestamp = sorted(rgb_timestamp)
 
 for (kr, vr), (k, v) in zip(vicon_object_rotations_with_timestamps.items(), vicon_object_translations_with_timestamps.items()):
     # kr and k are timestamps for respective values
-    print(kr)
+    print('timestamp ', kr , ' object ', count)
     ############# Defining paths for images #############
     rgb_t = rgb_timestamp[count]
     ec_left = timestamp_closest_ec_left[count]
@@ -140,19 +145,18 @@ for (kr, vr), (k, v) in zip(vicon_object_rotations_with_timestamps.items(), vico
     ############ RGB Image ############
     H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
     # True is given if you want to save the bounding box and pose data of the object.
-    img_rgb = project_points_to_image_plane(H_rgb_2_object, rgb_img_path, points_3d, vertices,
-                                                    camera_matrix, distortion_coefficients, output_dir, True)
+    img_rgb = project_points_to_image_plane(H_rgb_2_object, k, rgb_img_path, points_3d, vertices,
+                                                    camera_matrix, distortion_coefficients, output_dir_rgb, True)
 
     ############ Event camera 1 ############
-
     H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_object'])
-    img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, event_cam_left, points_3d, vertices,
-                                                    camera_mtx_cam1, distortion_coeffs_cam1,output_dir, False)
+    img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_cam_left, points_3d, vertices,
+                                                    camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, True)
 
     ############ Event camera 2 ############
     H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_object'])
-    img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, event_cam_right, points_3d, vertices,
-                                                    camera_mtx_cam2, distortion_coeffs_cam2, output_dir, False)
+    img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_cam_right, points_3d, vertices,
+                                                    camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, True)
 
     ########### Display the images ###########
     img_rgb = cv2.resize(img_rgb, (568, 426))
