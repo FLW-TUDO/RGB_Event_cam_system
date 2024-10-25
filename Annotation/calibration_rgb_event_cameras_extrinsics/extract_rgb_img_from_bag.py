@@ -6,8 +6,8 @@ from cv_bridge import CvBridge
 import numpy as np
 import os
 
-output_dir = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_4/reconstructed_events/cam0/'
-BAGFILE = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_4/event_images.bag'
+output_dir = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_21/reconstructed_events/cam0/'
+BAGFILE = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_21/events_images.bag'
 #os.mkdir(output_dir)
 
 # if cam0 not there then create it

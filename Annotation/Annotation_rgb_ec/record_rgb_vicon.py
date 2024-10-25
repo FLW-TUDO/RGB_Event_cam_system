@@ -9,6 +9,8 @@ Created on Fri Jan  5 14:27:36 2024
 import rospy
 from cv_bridge import CvBridge
 import json
+
+from sphinx.builders.gettext import timestamp
 from std_msgs.msg import Float32MultiArray
 import cv2
 import os
@@ -42,7 +44,7 @@ image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
 vicon_subscriber = rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 
 # Folder to save images
-save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/fourth_calib/'
+save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/calib_23_oct/'
 os.makedirs(save_folder, exist_ok=True)
 image_dir = os.path.join(save_folder, 'images')
 os.makedirs(image_dir, exist_ok=True)
@@ -60,8 +62,11 @@ while not rospy.is_shutdown():
     time.sleep(0.1)
     # Save image to folder
     image_filename = str(count) + '.png'
-    cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
-
+    #cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
+    # extract the timestamp from the vicon data and save as nano secs
+    timestamp = received_vicon.header.stamp.secs + received_vicon.header.stamp.nsecs * 1e-9
+    # delete the decimal point and join bothe the strings
+    #timestamp = str(timestamp).replace('.','')
     # Save vicon coordinates to a JSON file
     translation = [
         received_vicon.transform.translation.x,
@@ -73,7 +78,7 @@ while not rospy.is_shutdown():
         received_vicon.transform.rotation.z,
         received_vicon.transform.rotation.w,
         ]
-    vicon_data[count] = {'translation': translation, 'rotation': rotation}
+    vicon_data[count] = {'timestamp': timestamp, 'translation': translation, 'rotation': rotation}
 
     count += 1
 
