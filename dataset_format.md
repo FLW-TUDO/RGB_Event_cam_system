@@ -51,13 +51,25 @@ rgb
 Event camera folders
 ```
 event_camera_left
+├─ Pose.json
+├─ BBox.json
 ├─ 1706115139000000000.npy
 ├─ 1706115143000000000.npy
 ├─ .....
 
 event_camera_right
+├─ Pose.json
+├─ BBox.json
 ├─ 1706115140000000000.npy
 ├─ 1706115144000000000.npy
 ├─ .....
 ```
+
+Pose.json
+[timestamp,[tx, ty, tz, rx, ry, rz]]
+.....
+
+BBox.json
+{"timestamp": timestamp, "xmin": , "xmax": , "ymin": , "ymax":}
+...
 
