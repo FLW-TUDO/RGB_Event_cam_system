@@ -240,3 +240,26 @@ def save_pose(H_cam_optical_2_point, center_3d, output_dir, timestamp):
     file = output_dir + "_pose.json"
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(data) + '\n')
+
+def get_humanBBox_vertices(human_bbox_path, k):
+    # import json. It contains 3D bbox values of human as xmin xmax ymin ymax zmin zmax
+    with open(human_bbox_path, 'r') as f:
+        data = json.load(f)
+    # extract xmin xmax ymin ymax zmin zmax for timestamp value = k
+    for i in data:
+        if i['timestamp'] == k:
+            vertices = [i['xmin'], i['xmax'], i['ymin'], i['ymax'], i['zmin'], i['zmax']]
+        exit()
+
+    # get coordinates of the 3D bbox using above values
+    vertices = np.array([[vertices[0], vertices[2], vertices[4]],
+                          [vertices[0], vertices[3], vertices[4]],
+                          [vertices[1], vertices[3], vertices[4]],
+                          [vertices[1], vertices[2], vertices[4]],
+                          [vertices[0], vertices[2], vertices[5]],
+                          [vertices[0], vertices[3], vertices[5]],
+                          [vertices[1], vertices[3], vertices[5]],
+                          [vertices[1], vertices[2], vertices[5]]])
+
+    return vertices
+
