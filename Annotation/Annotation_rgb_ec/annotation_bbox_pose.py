@@ -6,31 +6,34 @@ import os
 import json
 import trimesh
 
-from extract_rgb_events_vicon_data_from_bag import object_name
-#from extract_rgb_events_vicon_data_from_bag import object_name
 from utilities import *
 import torch
 
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box", 11: "human"
 
-objects = ['human']
+objects = ['zivid']
 #object_name = str(objects[0]) + '_' + str(objects[1])
-object_name = 'pallet_ec_blue_klt'
-obj_id = [11]
+object_name = 'zivid_12'
+obj_id = [8]
 threshold = 10000000
 last = False
 iter = 1
-human_bbox_path = '/home/eventcamera/data/dataset/pallet_ec_blue_klt_1/human_bbox.json'
+
 for object_id in obj_id:
+
     if iter == len(obj_id):
         last = True
     if object_id == 1:
         obj_name = 'pallet'
     elif object_id == 4:
         obj_name = 'blue_klt'
+    elif object_id == 6:
+        obj_name = 'kronen'
     elif object_id == 11:
         obj_name = 'human'
+    elif object_id == 8:
+        obj_name = 'zivid'
 
     # import object data from json file
     with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
@@ -38,6 +41,7 @@ for object_id in obj_id:
     if object_id != 11:
         object_len_z = obj_model_data[str(object_id)]['size_z']
     root_dir = '/home/eventcamera/data/dataset/' + object_name
+    human_bbox_path = root_dir + '/vicon_data/human_bbox.json'
     path = root_dir + '/' + str(objects[iter-1])
     json_path_camera_sys = root_dir + '/vicon_data/event_cam_sys.json'
     json_path_object = root_dir + '/vicon_data/' + obj_name + '.json'
@@ -129,7 +133,8 @@ for object_id in obj_id:
     # Read the vicon coordinates of the even camera system. Traverse through the coordinates
     with open(json_path_camera_sys, 'r') as f:
         vicon_data_camera_sys = json.load(f)
-    save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
+    save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1,
+                         path)
 
     ################## ANNOTATIONS #################
     count = 0
@@ -142,6 +147,8 @@ for object_id in obj_id:
 
     for (kr, vr), (k, v) in zip(vicon_object_rotations_with_timestamps.items(), vicon_object_translations_with_timestamps.items()):
         # kr and k are timestamps for respective values
+        # if count == 2:
+        #    break
         print('timestamp ', kr , ' image ', count)
         ############# Defining paths for images #############
         rgb_t = rgb_timestamp[count]
@@ -152,9 +159,9 @@ for object_id in obj_id:
         event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
 
         ####### Import object ply file and create a mesh for visualization #######
-        if object_id == 11:
+        if object_id == 111:
             vertices = get_humanBBox_vertices(human_bbox_path, k)
-            points3d = vertices
+            points_3d = vertices
         else:
             obj_geometry = trimesh.load_mesh(obj_path)
             if not isinstance(obj_geometry, trimesh.Trimesh):
@@ -168,19 +175,19 @@ for object_id in obj_id:
         H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
         # True is given if you want to save the bounding box and pose data of the object.
         img_rgb = project_points_to_image_plane(H_rgb_2_object, k, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, True)
+                                                        camera_matrix, distortion_coefficients, output_dir_rgb, object_id, True)
         cv2.imwrite(rgb_img_path, img_rgb)
 
         ############ Event camera 1 ############
         H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_object'])
         img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_cam_left, points_3d, vertices,
-                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, True)
+                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, object_id, True)
         cv2.imwrite(event_cam_left, img_event_cam_1)
 
         ############ Event camera 2 ############
         H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_object'])
         img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_cam_right, points_3d, vertices,
-                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, True)
+                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, object_id, True)
         cv2.imwrite(event_cam_right, img_event_cam_2)
         count += 1
         if last:
@@ -197,3 +204,4 @@ for object_id in obj_id:
             cv2.waitKey(0)
 
             cv2.destroyAllWindows()
+

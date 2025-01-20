@@ -80,6 +80,9 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
         H_rgb_2_world[:3, :3] = np.transpose(H_world_2_rgb[:3, :3])
         H_rgb_2_world[:3, 3] = -np.matmul(np.transpose(H_world_2_rgb[:3, :3]),
                                                  H_world_2_rgb[:3, 3])
+        # Sometimes a few msgs from start and end go missing. Hence, we need to check if the timestamp exists in the vicon_object_data
+        if str(v['timestamp']) not in vicon_object_data.keys():
+            continue
         t_x = vicon_object_data[str(v['timestamp'])]['translation'][0]
         t_y = vicon_object_data[str(v['timestamp'])]['translation'][1]
         t_z = vicon_object_data[str(v['timestamp'])]['translation'][2]
@@ -101,18 +104,69 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
         t_cam1_2_object = H_cam1_2_object[:3, 3]
         H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
         t_cam2_2_object = H_cam2_2_object[:3, 3]
+        H_cam1_2_vicon = np.matmul(H_cam1_2_rgb, H_rgb_2_world)
+        H_cam2_2_vicon = np.matmul(H_cam2_cam1, H_cam1_2_vicon)
         transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_rgb_2_vicon': H_rgb_2_world.tolist(),
                                                            'H_rgb_2_object': H_rgb_2_object.tolist(),
                                                            'H_world_2_cam_vicon': H_world_2_cam_vicon.tolist(),
                                                            't_rgb_2_object': t_rgb_2_object.tolist(),
                                                            'H_cam1_2_object': H_cam1_2_object.tolist(),
                                                            'H_cam2_2_object': H_cam2_2_object.tolist(),
+                                                            'H_cam1_2_vicon': H_cam1_2_vicon.tolist(),
+                                                            'H_cam2_2_vicon': H_cam2_2_vicon.tolist(),
                                                            'rotation': rotation.tolist(),
                                                            'timestamp': str(v['timestamp'])
                                                            }
     with open(path + '_transformations.json', 'w') as json_file:
         json.dump(transformations, json_file, indent=2)
     print('saved transformations data')
+
+
+def compute_cam_2_obj(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data, vertices, H_cam1_2_rgb, H_cam2_cam1, camera):
+    transformations = {}
+    for i, v in vicon_data_camera_sys.items():
+        if i == str(len(vicon_data_camera_sys) - 1):
+            continue
+        vicon_cam_translation = vicon_data_camera_sys[str(i)]['translation']
+        vicon_cam_rotation_quat = vicon_data_camera_sys[str(i)]['rotation']
+
+        # get rotation matrix from quaternion
+        rotation_vicon_cam = R.from_quat(vicon_cam_rotation_quat).as_matrix()
+        # make homogeneous transformation matrix
+        H_world_2_cam_vicon = np.eye(4)
+        H_world_2_cam_vicon[:3, :3] = rotation_vicon_cam
+        H_world_2_cam_vicon[:3, 3] = vicon_cam_translation
+
+        # make homogeneous transformation matrix from vicon to camera optical frame
+        H_world_2_rgb = np.matmul(H_world_2_cam_vicon, H_cam_vicon_2_rgb)
+
+        # invert H_vicon_2_cam_optical to get H_cam_optical_2_vicon
+        H_rgb_2_world = np.eye(4)
+        H_rgb_2_world[:3, :3] = np.transpose(H_world_2_rgb[:3, :3])
+        H_rgb_2_world[:3, 3] = -np.matmul(np.transpose(H_world_2_rgb[:3, :3]),
+                                                 H_world_2_rgb[:3, 3])
+        t_x = vertices[0]
+        t_y = vertices[1]
+        t_z = vertices[2]
+        r_x = vicon_object_data[str(v['timestamp'])]['rotation'][0]
+        r_y = vicon_object_data[str(v['timestamp'])]['rotation'][1]
+        r_z = vicon_object_data[str(v['timestamp'])]['rotation'][2]
+        r_w = vicon_object_data[str(v['timestamp'])]['rotation'][3]
+        rotation = R.from_quat([r_x, r_y, r_z, r_w]).as_matrix()
+        # world_2_object are the recorded vicon values for the object
+        H_world_2_object = np.eye(4)
+        H_world_2_object[:3, :3] = rotation
+        H_world_2_object[:3, 3] = [t_x, t_y, t_z]
+        H_rgb_2_object = np.matmul(H_rgb_2_world, H_world_2_object)
+        H_cam1_2_object = np.matmul(H_cam1_2_rgb, H_rgb_2_object)
+        H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
+        if camera == 'rgb':
+            return H_rgb_2_object
+        elif camera == 'cam1':
+            # project object (x,y,z) in rgb coordinate to cam1 coordinate
+            return H_cam1_2_object
+        else:
+            return H_cam2_2_object
 
 
 def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
@@ -161,15 +215,15 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
 
     return vertices, points_3d
 
-def save_bbox_values(output_dir, object_3d_transform_points, timestamp):
+def save_bbox_values(output_dir, object_2d_transform_points, timestamp):
     #################################### Exporting bounding box and pose values to a json file ####################################
     # transform object_3d_transform_points of size (8,1,2) to (8,2)
-    object_3d_transform_points = object_3d_transform_points.reshape(-1, 2)
+    object_2d_transform_points = object_2d_transform_points.reshape(-1, 2)
     # compute xmin, xmax, ymin, ymax, zmin, zmax
-    xmin = float(np.min(object_3d_transform_points[:, 0]))
-    xmax = float(np.max(object_3d_transform_points[:, 0]))
-    ymin = float(np.min(object_3d_transform_points[:, 1]))
-    ymax = float(np.max(object_3d_transform_points[:, 1]))
+    xmin = float(np.min(object_2d_transform_points[:, 0]))
+    xmax = float(np.max(object_2d_transform_points[:, 0]))
+    ymin = float(np.min(object_2d_transform_points[:, 1]))
+    ymax = float(np.max(object_2d_transform_points[:, 1]))
     #zmin = np.min(object_3d_transform_points[:, 2])
     #zmax = np.max(object_3d_transform_points[:, 2])
     # Save above values in an array
@@ -178,7 +232,28 @@ def save_bbox_values(output_dir, object_3d_transform_points, timestamp):
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
     Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax}
     # append the Bbox values to a json file row wise
-    file = output_dir + "_bounding_box_labels.json"
+    file = output_dir + "_bounding_box_labels_2d.json"
+    with open(file, 'a') as json_file:
+        json_file.write(json.dumps(Bbox) + '\n')
+
+def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices):
+    #################################### Exporting bounding box and pose values to a json file ####################################
+    # transform object_3d_transform_points of size (8,1,2) to (8,2)
+    object_3d_transform_vertices = object_3d_transform_vertices.reshape(-1, 3)
+    # compute xmin, xmax, ymin, ymax, zmin, zmax
+    xmin = float(np.min(object_3d_transform_vertices[:, 0]))
+    xmax = float(np.max(object_3d_transform_vertices[:, 0]))
+    ymin = float(np.min(object_3d_transform_vertices[:, 1]))
+    ymax = float(np.max(object_3d_transform_vertices[:, 1]))
+    zmin = np.min(object_3d_transform_vertices[:, 2])
+    zmax = np.max(object_3d_transform_vertices[:, 2])
+    # Save above values in an array
+    #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax, zmin, zmax])
+    #Bbox = {'timestamp': timestamp, 'xmin': Bbox[1], 'xmax': Bbox[2], 'ymin': Bbox[3], 'ymax': Bbox[4], 'zmin': Bbox[5], zmax: Bbox[6]}
+    #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
+    Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax}
+    # append the Bbox values to a json file row wise
+    file = output_dir + "_bounding_box_labels_3d.json"
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
@@ -198,7 +273,6 @@ def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertic
                                    :3, :].T
     center_3d = np.mean(object_3d_transform_points, axis=0)
 
-
     # project 3d points to image plane
     object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
                                          distortion_coefficients)
@@ -212,15 +286,32 @@ def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertic
     center_2d = center_2d[0, 0]
     if save:
         save_bbox_values(output_dir, object_2d_vertices, k)
+        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices)
         save_pose(H_cam_2_object, center_3d, output_dir, k)
 
     # create a mask by projecting the points on the image
     mask = np.zeros_like(img_temp_cam)
     for point in object_2d_points:
-        mask = cv2.circle(mask, tuple(point[0].astype(int)), 2, (255, 255, 255), -1)
+        mask = cv2.circle(mask, tuple(point[0].astype(int)), 6, (255, 255, 255), -1)
     # fill the mask with the projected points
     img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
-
+    # create a cube out of the 8 vertices
+    for i in range(0, 4):
+        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                         tuple(object_2d_vertices[(i + 1) % 4][0].astype(int)), (0, 255, 0), 3)
+        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i + 4][0].astype(int)),
+                         tuple(object_2d_vertices[(i + 1) % 4 + 4][0].astype(int)), (0, 255, 0), 3)
+        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                         tuple(object_2d_vertices[i + 4][0].astype(int)), (0, 255, 0), 3)
+    '''
+    # create 2D BBox using vertices. object_2d_vertices are the 3D vertices of the 3D object
+    # Convert 3D BBox to 2Bbox vertices
+    img_temp_cam = cv2.rectangle(img_temp_cam, tuple(object_2d_vertices[0][0].astype(int)),
+                                    tuple(object_2d_vertices[2][0].astype(int)), (0, 255, 0), 3)
+    # show the points on the image
+    for point in object_2d_points:
+        img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
+    '''
     for point in object_2d_vertices:
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
     img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
@@ -246,10 +337,8 @@ def get_humanBBox_vertices(human_bbox_path, k):
     with open(human_bbox_path, 'r') as f:
         data = json.load(f)
     # extract xmin xmax ymin ymax zmin zmax for timestamp value = k
-    for i in data:
-        if i['timestamp'] == k:
-            vertices = [i['xmin'], i['xmax'], i['ymin'], i['ymax'], i['zmin'], i['zmax']]
-        exit()
+    vertices = data[str(k)]['min_x'], data[str(k)]['max_x'], data[str(k)]['min_y'], data[str(k)]['max_y'], data[str(k)]['min_z'], data[str(k)]['max_z']
+
 
     # get coordinates of the 3D bbox using above values
     vertices = np.array([[vertices[0], vertices[2], vertices[4]],
@@ -260,6 +349,7 @@ def get_humanBBox_vertices(human_bbox_path, k):
                           [vertices[0], vertices[3], vertices[5]],
                           [vertices[1], vertices[3], vertices[5]],
                           [vertices[1], vertices[2], vertices[5]]])
-
+    # convert to metres
+    vertices = vertices / 1000
     return vertices
 
