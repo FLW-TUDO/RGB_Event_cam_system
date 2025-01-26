@@ -42,6 +42,10 @@ else:
     device = torch.device("cpu")
 print(f"using device: {device}")
 
+# `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
+root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/scene10_1'
+video_dir = "/home/eventcamera/data/dataset/dataset_23_jan/scene10_1/rgb_jpg"
+
 if device.type == "cuda":
     # use bfloat16 for the entire notebook
     torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
@@ -83,7 +87,7 @@ def save_mask(mask, out_frame_idx, obj_id=None):
     color = np.array([*cmap(cmap_idx)[:3], 0.6])
     h, w = mask.shape[-2:]
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
-    save_path = root_dir + '/output_masks_human_img/' + frame_names[out_frame_idx]
+    save_path = mask_save_path + frame_names[out_frame_idx]
     # save mask image
     plt.imshow(mask_image)
     plt.savefig(save_path)
@@ -112,9 +116,6 @@ ffmpeg -i <your_video>.mp4 -q:v 2 -start_number 0 <output_dir>/'%05d.jpg'
 where `-q:v` generates high-quality JPEG frames and `-start_number 0` asks ffmpeg to start the JPEG file from `00000.jpg`.
 """
 
-# `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
-root_dir = '/home/eventcamera/data/dataset/human_hupwagen_kronen_blue_klt_1'
-video_dir = "/home/eventcamera/data/dataset/human_hupwagen_kronen_blue_klt_1/rgb_jpg"
 
 
 # scan all the JPEG frame names in this directory
@@ -129,90 +130,97 @@ frame_idx = 0
 plt.figure(figsize=(9, 6))
 plt.title(f"frame {frame_idx}")
 plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_idx])))
+objects = ['human', 'hupwagen']
+first_iter = True
+for obj in objects:
+    mask_save_path = root_dir + '/output_masks_' + obj + '_img/'
+    # empty cuda memory
+    torch.cuda.empty_cache()
 
+    """#### Initialize the inference state
+    
+    SAM 2 requires stateful inference for interactive video segmentation, so we need to initialize an **inference state** on this video.
+    
+    During initialization, it loads all the JPEG frames in `video_path` and stores their pixels in `inference_state` (as shown in the progress bar below).
+    """
+    if first_iter:
+        inference_state = predictor.init_state(video_path=video_dir)
+        first_iter = False
+    #inference_state = predictor.init_state(video_path=video_dir)
 
-"""#### Initialize the inference state
+    """### Example 1: Segment & track one object
+    
+    Note: if you have run any previous tracking using this `inference_state`, please reset it first via `reset_state`.
+    
+    (The cell below is just for illustration; it's not needed to call `reset_state` here as this `inference_state` is just freshly initialized above.)
+    """
 
-SAM 2 requires stateful inference for interactive video segmentation, so we need to initialize an **inference state** on this video.
+    predictor.reset_state(inference_state)
 
-During initialization, it loads all the JPEG frames in `video_path` and stores their pixels in `inference_state` (as shown in the progress bar below).
-"""
+    """In addition to using clicks as inputs, SAM 2 also supports segmenting and tracking objects in a video via **bounding boxes**.
+    
+    In the example below, we segment the child on the right using a **box prompt** of (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) on frame 0 as input into the `add_new_points_or_box` API.
+    """
+    # Load bounding box data from json file
+    bbox_data = []
 
-inference_state = predictor.init_state(video_path=video_dir)
+    with open(root_dir + '/annotation_' + obj + '/' + obj + '_rgb_bounding_box_labels_2d.json', 'r') as file:
+        for line in file:
+            bbox_data.append(json.loads(line))
+    first_frame = bbox_data[0]
 
-"""### Example 1: Segment & track one object
+    ann_frame_idx = 0  # the frame index we interact with
+    ann_obj_id = 4  # give a unique id to each object we interact with (it can be any integers)
 
-Note: if you have run any previous tracking using this `inference_state`, please reset it first via `reset_state`.
+    # Let's add a box at (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) to get started
+    #box = np.array([148, 135, 232, 232.0], dtype=np.float32)
+    box = np.array([first_frame['xmin'], first_frame['ymin'], first_frame['xmax'], first_frame['ymax']], dtype=np.float32)
+    _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
+        inference_state=inference_state,
+        frame_idx=ann_frame_idx,
+        obj_id=ann_obj_id,
+        box=box,
+    )
 
-(The cell below is just for illustration; it's not needed to call `reset_state` here as this `inference_state` is just freshly initialized above.)
-"""
+    # show the results on the current (interacted) frame
+    plt.figure(figsize=(9, 6))
+    plt.title(f"frame {ann_frame_idx}")
+    plt.imshow(Image.open(os.path.join(video_dir, frame_names[ann_frame_idx])))
+    show_box(box, plt.gca())
+    show_mask((out_mask_logits[0] > 0.0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0])
 
-predictor.reset_state(inference_state)
+    """Here, SAM 2 gets a pretty good segmentation mask of the entire human, even though the input bounding box is not perfectly tight around the object.
+    
+    Similar to the previous example, if the returned mask from is not perfect when using a box prompt, we can also further **refine** the output using positive or negative clicks. To illustrate this, here we make a **positive click** at (x, y) = (460, 60) with label `1` to expand the segment around the child's hair.
+    
+    Note: to refine the segmentation mask from a box prompt, we need to send **both the original box input and all subsequent refinement clicks and their labels** when calling `add_new_points_or_box`.
+    """
 
-"""In addition to using clicks as inputs, SAM 2 also supports segmenting and tracking objects in a video via **bounding boxes**.
+    """Then, to get the masklet throughout the entire video, we propagate the prompts using the `propagate_in_video` API."""
 
-In the example below, we segment the child on the right using a **box prompt** of (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) on frame 0 as input into the `add_new_points_or_box` API.
-"""
-# Load bounding box data from json file
-bbox_data = []
+    # run propagation throughout the video and collect the results in a dict
+    save_dir = root_dir + '/output_masks_' + obj + '_img/'
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    video_segments = {}  # video_segments contains the per-frame segmentation results
+    for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state):
+        video_segments[out_frame_idx] = {
+            out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+            for i, out_obj_id in enumerate(out_obj_ids)
+        }
 
-with open(root_dir + '/annotation/rgb_bounding_box_labels_2d.json', 'r') as file:
-    for line in file:
-        bbox_data.append(json.loads(line))
-first_frame = bbox_data[0]
-
-ann_frame_idx = 0  # the frame index we interact with
-ann_obj_id = 4  # give a unique id to each object we interact with (it can be any integers)
-
-# Let's add a box at (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) to get started
-#box = np.array([148, 135, 232, 232.0], dtype=np.float32)
-box = np.array([first_frame['xmin'], first_frame['ymin'], first_frame['xmax'], first_frame['ymax']], dtype=np.float32)
-_, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
-    inference_state=inference_state,
-    frame_idx=ann_frame_idx,
-    obj_id=ann_obj_id,
-    box=box,
-)
-
-# show the results on the current (interacted) frame
-plt.figure(figsize=(9, 6))
-plt.title(f"frame {ann_frame_idx}")
-plt.imshow(Image.open(os.path.join(video_dir, frame_names[ann_frame_idx])))
-show_box(box, plt.gca())
-show_mask((out_mask_logits[0] > 0.0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0])
-
-"""Here, SAM 2 gets a pretty good segmentation mask of the entire human, even though the input bounding box is not perfectly tight around the object.
-
-Similar to the previous example, if the returned mask from is not perfect when using a box prompt, we can also further **refine** the output using positive or negative clicks. To illustrate this, here we make a **positive click** at (x, y) = (460, 60) with label `1` to expand the segment around the child's hair.
-
-Note: to refine the segmentation mask from a box prompt, we need to send **both the original box input and all subsequent refinement clicks and their labels** when calling `add_new_points_or_box`.
-"""
-
-"""Then, to get the masklet throughout the entire video, we propagate the prompts using the `propagate_in_video` API."""
-
-# run propagation throughout the video and collect the results in a dict
-save_dir = root_dir + '/output_masks_human_img/'
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
-video_segments = {}  # video_segments contains the per-frame segmentation results
-for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state):
-    video_segments[out_frame_idx] = {
-        out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
-        for i, out_obj_id in enumerate(out_obj_ids)
-    }
-
-# render the segmentation results every few frames
-vis_frame_stride = 1
-plt.close("all")
-for out_frame_idx in range(0, len(frame_names), vis_frame_stride):
-    plt.figure(figsize=(6, 4))
-    plt.title(f"frame {out_frame_idx}")
-    plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
-    for out_obj_id, out_mask in video_segments[out_frame_idx].items():
-        print('out_obj_id:', out_obj_id)
-        #show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
-        save_mask(out_mask, out_frame_idx)
-        # save out_mask as a npy file with name as frame_name without jpy extension
-        np.save(os.path.join(save_dir, f"{frame_names[out_frame_idx][:-4]}.npy"), out_mask)
-    #plt.show()
+    # render the segmentation results every few frames
+    vis_frame_stride = 1
     plt.close("all")
+    for out_frame_idx in range(0, len(frame_names), vis_frame_stride):
+        plt.figure(figsize=(6, 4))
+        plt.title(f"frame {out_frame_idx}")
+        plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
+        for out_obj_id, out_mask in video_segments[out_frame_idx].items():
+            print("saved mask for object {obj} with frame {frame_names[out_frame_idx]}")
+            #show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
+            save_mask(out_mask, out_frame_idx)
+            # save out_mask as a npy file with name as frame_name without jpy extension
+            np.save(os.path.join(save_dir, f"{frame_names[out_frame_idx][:-4]}.npy"), out_mask)
+        #plt.show()
+        plt.close("all")

@@ -171,6 +171,9 @@ def compute_cam_2_obj(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_dat
 
 def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
     if object_id == 1:
+        rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
+        vertices = np.dot(vertices, rotation_matrix)
+        points_3d = np.dot(points_3d, rotation_matrix)
         translation_vector = np.array([0, 0, -object_len_z/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
@@ -181,6 +184,9 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 3:
+        rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
+        vertices = np.dot(vertices, rotation_matrix)
+        points_3d = np.dot(points_3d, rotation_matrix)
         translation_vector = np.array([0.0, 0, -(object_len_z + 55)/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
@@ -196,7 +202,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 8:
-        translation_vector = np.array([0, 0, 0.05])
+        translation_vector = np.array([0, 0, 0.05]) # For the recorded videos in nov 2024 the value was 0.05. The z changed because the marker combination changed on zivid box
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -258,7 +264,7 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices):
         json_file.write(json.dumps(Bbox) + '\n')
 
 def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertices,
-                                  camera_matrix, distortion_coefficients, output_dir, save = False):
+                                  camera_matrix, distortion_coefficients, output_dir, save = False, human = False):
     #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
      #                                  distortion_coefficients)
     #points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
@@ -292,17 +298,19 @@ def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertic
     # create a mask by projecting the points on the image
     mask = np.zeros_like(img_temp_cam)
     for point in object_2d_points:
-        mask = cv2.circle(mask, tuple(point[0].astype(int)), 6, (255, 255, 255), -1)
+        mask = cv2.circle(mask, tuple(point[0].astype(int)), 2, (255, 255, 255), -1)
     # fill the mask with the projected points
     img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
-    # create a cube out of the 8 vertices
-    for i in range(0, 4):
-        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
-                         tuple(object_2d_vertices[(i + 1) % 4][0].astype(int)), (0, 255, 0), 3)
-        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i + 4][0].astype(int)),
-                         tuple(object_2d_vertices[(i + 1) % 4 + 4][0].astype(int)), (0, 255, 0), 3)
-        img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
-                         tuple(object_2d_vertices[i + 4][0].astype(int)), (0, 255, 0), 3)
+    if human:
+        for i in range(4):
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                                    tuple(object_2d_vertices[(i + 1) % 4][0].astype(int)), (0, 255, 0), 3)
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i + 4][0].astype(int)),
+                                    tuple(object_2d_vertices[(i + 1) % 4 + 4][0].astype(int)), (0, 255, 0), 3)
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                                    tuple(object_2d_vertices[i + 4][0].astype(int)), (0, 255, 0), 3)
+
+
     '''
     # create 2D BBox using vertices. object_2d_vertices are the 3D vertices of the 3D object
     # Convert 3D BBox to 2Bbox vertices
@@ -319,6 +327,7 @@ def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertic
     #cv2.imshow('img', cv2.resize(img_temp_cam, (0, 0), fx=0.5, fy=0.5))
     return img_temp_cam
 
+
 def save_pose(H_cam_optical_2_point, center_3d, output_dir, timestamp):
     rotation = H_cam_optical_2_point[:3, :3]
     rotmat = R.from_matrix(rotation)
@@ -332,14 +341,36 @@ def save_pose(H_cam_optical_2_point, center_3d, output_dir, timestamp):
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(data) + '\n')
 
-def get_humanBBox_vertices(human_bbox_path, k):
+def check_human_bbox_data(data, k, previous_t):
+
+    # compare all the x,y and z values at current time with the previous time. If the mod of difference is greater than 0.6 then keep the previous value
+    # else keep the current value
+    threshold = 600
+    if abs(data[str(k)]['min_x'] - data[str(previous_t)]['min_x']) > threshold:
+        data[str(k)]['min_x'] = data[str(previous_t)]['min_x']
+        print('inconsistent min_x')
+    if abs(data[str(k)]['max_x'] - data[str(previous_t)]['max_x']) > threshold:
+        data[str(k)]['max_x'] = data[str(previous_t)]['max_x']
+        print('inconsistent max_x')
+    if abs(data[str(k)]['min_y'] - data[str(previous_t)]['min_y']) > threshold:
+        data[str(k)]['min_y'] = data[str(previous_t)]['min_y']
+        print('inconsistent min_y')
+    if abs(data[str(k)]['max_y'] - data[str(previous_t)]['max_y']) > threshold:
+        data[str(k)]['max_y'] = data[str(previous_t)]['max_y']
+        print('inconsistent max_y')
+    if abs(data[str(k)]['min_z'] - data[str(previous_t)]['min_z']) > threshold:
+        data[str(k)]['min_z'] = data[str(previous_t)]['min_z']
+        print('inconsistent min_z')
+    if abs(data[str(k)]['max_z'] - data[str(previous_t)]['max_z']) > threshold:
+        data[str(k)]['max_z'] = data[str(previous_t)]['max_z']
+        print('inconsistent max_z')
+    return data
+
+def get_humanBBox_vertices(data, k):
     # import json. It contains 3D bbox values of human as xmin xmax ymin ymax zmin zmax
-    with open(human_bbox_path, 'r') as f:
-        data = json.load(f)
+
     # extract xmin xmax ymin ymax zmin zmax for timestamp value = k
     vertices = data[str(k)]['min_x'], data[str(k)]['max_x'], data[str(k)]['min_y'], data[str(k)]['max_y'], data[str(k)]['min_z'], data[str(k)]['max_z']
-
-
     # get coordinates of the 3D bbox using above values
     vertices = np.array([[vertices[0], vertices[2], vertices[4]],
                           [vertices[0], vertices[3], vertices[4]],

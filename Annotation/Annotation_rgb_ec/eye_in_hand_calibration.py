@@ -15,7 +15,7 @@ from scipy.spatial.transform import Rotation as R
 square_size_meter = 0.125
 image_size = (2048, 1536)
 # Third calib is the original calibration as on 20 Aug 2024
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/calib_23_oct/scene_1'
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/'
 checker_board_size = (8, 5)
 #params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
 #distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])

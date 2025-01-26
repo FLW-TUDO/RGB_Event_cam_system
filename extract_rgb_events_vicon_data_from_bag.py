@@ -22,26 +22,30 @@ from datetime import datetime
 
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
-obj = ['human', 'hupwagen', 'kronen', 'blue_klt']
+obj = ['human', 'zivid','hupwagen']
+objects = ['blue_klt']
+object_name = 'scene1_2'
 human = True
+hup = True
 num = [1]
 flag = 1
 rgb_topic = '/rgb/image_raw'
 
+
 for k in num:
-    for object in obj:
+    for object in objects:
 
         print('Extracting data for object: ', object, ' with number: ', k)
-        object_name = object + '_' + str(k)
+        #object_name = object + '_' + str(k)
 
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
         if(len(obj) > 1):
-            object_name = obj[0] + '_' + obj[1] + '_' + obj[2] + '_' + obj[3] + '_' + str(k)
-            bag = rosbag.Bag('/home/eventcamera/data/dataset/' + object_name + '/' + object_name + '.bag')
-        path = '/home/eventcamera/data/dataset/' + object_name + '/'
-        bag = rosbag.Bag('/home/eventcamera/data/dataset/' + object_name + '/' + object_name + '.bag')
+
+            bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/' + object_name + '.bag')
+        path = '/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/'
+        bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/' + object_name + '.bag')
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
         events_topic_left = '/dvxplorer_left/events'
         events_topic_right = '/dvxplorer_right/events'
@@ -49,6 +53,7 @@ for k in num:
         vicon_object = '/vicon/' + object + '/' + object
         vicon_human = '/vicon/markers'
         vicon_human_object = '/vicon/human_head/human_head'
+        vicon_hupwagen_object = '/vicon/hupwagen/hupwagen'
 
         events_left = []
         events_right =[]
@@ -169,12 +174,11 @@ for k in num:
             vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
             # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
 
-        with open(path + 'vicon_data/' + object + '_' + str(k) + '.json', 'w') as json_file:
+        with open(path + 'vicon_data/' + object + '.json', 'w') as json_file:
             json.dump(vicon_data, json_file, indent=2)
         print('saved object data')
             # Close the bag file
         if human:
-
             if not os.path.exists(path + '/vicon_data'):
                 os.makedirs(path + '/vicon_data')
             vicon_data = {}
@@ -198,6 +202,29 @@ for k in num:
                 json.dump(vicon_data, json_file, indent=2)
             print('saved human data')
 
+        if hup:
+            if not os.path.exists(path + '/vicon_data'):
+                os.makedirs(path + '/vicon_data')
+            vicon_data = {}
+            print('Extracting data for hupwagen with number: ', k)
+            for top, msg, tim in bag.read_messages(vicon_hupwagen_object):
+                t = msg.header.stamp
+                translation = [
+                    msg.transform.translation.x,
+                    msg.transform.translation.y,
+                    msg.transform.translation.z]
+                rotation = [
+                    msg.transform.rotation.x,
+                    msg.transform.rotation.y,
+                    msg.transform.rotation.z,
+                    msg.transform.rotation.w]
+                # save t, translation and rotation to a json file
+                vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
+                # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
+
+            with open(path + 'vicon_data/' + 'hupwagen.json', 'w') as json_file:
+                json.dump(vicon_data, json_file, indent=2)
+            print('saved hupwagen data')
 
     bag.close()
     print('Done extracting data')

@@ -15,14 +15,26 @@ import os
 import rosbag
 from dataClass import DataClass
 
+
+
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 obj = ['human_LH','human_RH', 'human_LL', 'human_RL', 'human_head', 'human_waist']
 num = [1]
 flag = 1
 count = 0
-folder_name = 'human_hupwagen_kronen_blue_klt_1'
+folder_name = 'scene10_1'
 vicon_data = {}
+path = '/home/eventcamera/data/dataset/dataset_23_jan/' + folder_name + '/'
+
+def get_rotation_hupwagen(timestamp):
+    # read json file
+    with open(path + 'vicon_data/hupwagen.json', 'r') as json_file:
+        hupwagen_data = json.load(json_file)
+    if str(timestamp) not in hupwagen_data.keys():
+        timestamp = min(hupwagen_data.keys(), key=lambda x: abs(int(x) - int(str(timestamp))))
+    return hupwagen_data[str(timestamp)]['rotation']
+
 for k in num:
     for object in obj:
 
@@ -32,11 +44,10 @@ for k in num:
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        bag = rosbag.Bag('/home/eventcamera/data/dataset/' + folder_name + '/' + folder_name + '.bag')
-        path = '/home/eventcamera/data/dataset/' + folder_name + '/'
+        bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + folder_name + '/' + folder_name + '.bag')
 
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
-
+        # from the bag file
         vicon_object = '/vicon/' + object + '/' + object
         vicon_human = '/vicon/markers'
         time_LH = []
@@ -106,6 +117,26 @@ for k in num:
             return rot
 
 
+    def check_value(data, prev_t, present_t):
+        # compare all the x,y and z values at current time with the previous time. If the mod of difference is greater than 0.6 then keep the previous value
+        # else keep the current value
+        data[present_t]['min_x'] = data[prev_t]['min_x'] if abs(
+            data[present_t]['min_x'] - data[prev_t]['min_x']) > 2 else data[present_t]['min_x']
+        data[present_t]['min_y'] = data[prev_t]['min_y'] if abs(
+            data[present_t]['min_y'] - data[prev_t]['min_y']) > 2 else data[present_t]['min_y']
+        data[present_t]['min_z'] = data[prev_t]['min_z'] if abs(
+            data[present_t]['min_z'] - data[prev_t]['min_z']) > 2 else data[present_t]['min_z']
+        data[present_t]['max_x'] = data[prev_t]['max_x'] if abs(
+            data[present_t]['max_x'] - data[prev_t]['max_x']) > 2 else data[present_t]['max_x']
+        data[present_t]['max_y'] = data[prev_t]['max_y'] if abs(
+            data[present_t]['max_y'] - data[prev_t]['max_y']) > 2 else data[present_t]['max_y']
+        data[present_t]['max_z'] = data[prev_t]['max_z'] if abs(
+            data[present_t]['max_z'] - data[prev_t]['max_z']) > 2 else data[present_t]['max_z']
+
+        return data
+
+
+
     max_x = -100000
     max_y = -100000
     max_z = -100000
@@ -114,12 +145,15 @@ for k in num:
     min_z = 100000
     save_flag = True
     vicon_object = '/vicon/markers'
+
     vicon_data = {}
     first_flag = 0
     save_index = []
     count = 0
     entry_flag = True
-    bag = rosbag.Bag('/home/eventcamera/data/dataset/' + folder_name + '/' + folder_name + '.bag')
+    bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + folder_name + '/' + folder_name + '.bag')
+    # define an empty string
+    previous_t = ''
 
     for top, msg, tim in bag.read_messages(vicon_object):
 
@@ -132,6 +166,7 @@ for k in num:
                 # if the marker_name contains human in the name string then save that value in a list
                 if msg.markers[j].marker_name.find('human') != -1:
                     save_index.append(j)
+            previous_t = str(t)
             first_flag = 1
 
         for i in save_index:
@@ -171,13 +206,16 @@ for k in num:
 
 
         if save_flag:
+
             vicon_data[str(t)] = {'min_x': min_x, 'min_y': min_y, 'min_z': min_z, 'max_x': max_x, 'max_y': max_y,
                                   'max_z': max_z, 'rotation': rot, 'timestamp': str(t)}
-
+            #vicon_data = check_value(vicon_data, previous_t, str(t))
+            #previous_t = str(t)
             with open(path + '/vicon_data/human_bbox.json', 'w') as json_file:
                 json.dump(vicon_data, json_file, indent=2)
     print('saved human bbox data')
 
+    vicon_object = '/vicon/markers'
     vicon_data = {}
     save_index = []
     first_flag = 0
@@ -194,6 +232,7 @@ for k in num:
         entry_flag = True
         count = count + 1
         t = msg.header.stamp
+        print('hupwagen timestamp: ', t)
         if first_flag == 0:
 
             for j in range(int(len(msg.markers))):
@@ -234,12 +273,12 @@ for k in num:
                 print('msg' + str(count) + ' _ ' + str(i), ' is occluded')
 
 
-
+            rot = get_rotation_hupwagen(t)
         if save_flag:
             vicon_data[str(t)] = {'min_x': min_x, 'min_y': min_y, 'min_z': min_z, 'max_x': max_x, 'max_y': max_y,
                                   'max_z': max_z, 'timestamp': str(t)}
 
-            with open(path + '/vicon_data/hupwagen.json', 'w') as json_file:
+            with open(path + '/vicon_data/hupwagen_bbox.json', 'w') as json_file:
                 json.dump(vicon_data, json_file, indent=2)
     print('saved hupwagen bbox data')
     bag.close()
