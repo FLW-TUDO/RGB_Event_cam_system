@@ -230,19 +230,18 @@ def save_bbox_values(output_dir, object_2d_transform_points, timestamp):
     xmax = float(np.max(object_2d_transform_points[:, 0]))
     ymin = float(np.min(object_2d_transform_points[:, 1]))
     ymax = float(np.max(object_2d_transform_points[:, 1]))
-    #zmin = np.min(object_3d_transform_points[:, 2])
-    #zmax = np.max(object_3d_transform_points[:, 2])
-    # Save above values in an array
+
+
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax, zmin, zmax])
     #Bbox = {'timestamp': timestamp, 'xmin': Bbox[1], 'xmax': Bbox[2], 'ymin': Bbox[3], 'ymax': Bbox[4], 'zmin': Bbox[5], zmax: Bbox[6]}
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
     Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax}
     # append the Bbox values to a json file row wise
-    file = output_dir + "_bounding_box_labels_2d.json"
+    file = output_dir + "bounding_box_labels_2d.json"
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
-def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices):
+def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, object_2d_vertices, img_cam, time_rgb):
     #################################### Exporting bounding box and pose values to a json file ####################################
     # transform object_3d_transform_points of size (8,1,2) to (8,2)
     object_3d_transform_vertices = object_3d_transform_vertices.reshape(-1, 3)
@@ -253,24 +252,47 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices):
     ymax = float(np.max(object_3d_transform_vertices[:, 1]))
     zmin = np.min(object_3d_transform_vertices[:, 2])
     zmax = np.max(object_3d_transform_vertices[:, 2])
-    # Save above values in an array
-    #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax, zmin, zmax])
-    #Bbox = {'timestamp': timestamp, 'xmin': Bbox[1], 'xmax': Bbox[2], 'ymin': Bbox[3], 'ymax': Bbox[4], 'zmin': Bbox[5], zmax: Bbox[6]}
+    # Create a blank mask (same size as image, single channel)
+    if time_rgb != 0:
+        object_mask = np.zeros(img_cam.shape[:2], dtype=np.uint8)
+        hull = cv2.convexHull(np.array(object_2d_vertices))
+        cv2.fillPoly(object_mask, [hull], 255)
+        # Save or display the mask
+        cv2.imwrite("/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/masks_rgb/mask_" + str(time_rgb) + ".jpg", object_mask)
+        # load masks for human
+        data = np.load(
+            '/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/output_masks_human_img/' + str(time_rgb) + '.npy')
+        # Convert data from (1,1536,2048) to (1536,2038. visualise it in a camera frame of size 1536x2048
+        human_mask = data[0]
+        #human_maksk has values as true and false. Convert this to 1 and 0
+        human_mask = human_mask.astype(np.uint8)  # Convert True -> 1, False -> 0
+        if os.path.exists(output_dir + 'output_masks_hupwagen_img/'):
+            mask_hupwagen = cv2.imread("/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/output_masks_hupwagen_img/" + str(time_rgb) + '.jpg', cv2.IMREAD_GRAYSCALE)
+        # Subtract human mask from object mask
+        visible_object_mask = object_mask * (1 - human_mask)  # Remove overlapping region
+
+        # Convert back to 255 scale for saving
+        visible_object_mask = visible_object_mask
+        # Save the mask
+        cv2.imwrite("/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/masks_rgb/mask_" + str(time_rgb) + "_visible_object.jpg", visible_object_mask)
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
     Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax}
     # append the Bbox values to a json file row wise
-    file = output_dir + "_bounding_box_labels_3d.json"
+    file = output_dir + "bounding_box_labels_3d.json"
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
-def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertices,
-                                  camera_matrix, distortion_coefficients, output_dir, save = False, human = False):
+def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d, vertices,
+                                  camera_matrix, distortion_coefficients, output_dir, obj_iter =0, save = False, human = False):
     #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
      #                                  distortion_coefficients)
     #points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
+    # check if string rgb exists in rgb_image_path
+
     img_temp_cam = cv2.imread(img_path)
-    # rectify the image with the intrinsic parameters
-    img_temp_cam = cv2.undistort(img_temp_cam, camera_matrix, distortion_coefficients)
+    # rectify the image with the intrinsic parameters only first time
+    if obj_iter == 0:
+        img_temp_cam = cv2.undistort(img_temp_cam, camera_matrix, distortion_coefficients)
 
     #img_temp_cam = cv2.circle(img_temp_cam, tuple(points_2d_cam1[0][0]), 5, (255, 0, 0), -1)
     object_3d_transform_points = np.matmul(H_cam_2_object, np.vstack((points_3d.T, np.ones(points_3d.shape[0]))))[
@@ -292,10 +314,10 @@ def project_points_to_image_plane(H_cam_2_object, k, img_path, points_3d, vertic
     center_2d = center_2d[0, 0]
     if save:
         save_bbox_values(output_dir, object_2d_vertices, k)
-        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices)
+        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices, object_2d_vertices, img_temp_cam, rgb_t)
         save_pose(H_cam_2_object, center_3d, output_dir, k)
 
-    # create a mask by projecting the points on the image
+    # create a mask
     mask = np.zeros_like(img_temp_cam)
     for point in object_2d_points:
         mask = cv2.circle(mask, tuple(point[0].astype(int)), 2, (255, 255, 255), -1)

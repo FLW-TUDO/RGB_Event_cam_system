@@ -43,8 +43,9 @@ else:
 print(f"using device: {device}")
 
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
-root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/scene10_1'
-video_dir = "/home/eventcamera/data/dataset/dataset_23_jan/scene10_1/rgb_jpg"
+root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/scene3_1'
+video_dir = "/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/rgb"
+objects = ['human']
 
 if device.type == "cuda":
     # use bfloat16 for the entire notebook
@@ -130,7 +131,7 @@ frame_idx = 0
 plt.figure(figsize=(9, 6))
 plt.title(f"frame {frame_idx}")
 plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_idx])))
-objects = ['human', 'hupwagen']
+
 first_iter = True
 for obj in objects:
     mask_save_path = root_dir + '/output_masks_' + obj + '_img/'
@@ -173,7 +174,7 @@ for obj in objects:
     ann_obj_id = 4  # give a unique id to each object we interact with (it can be any integers)
 
     # Let's add a box at (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) to get started
-    #box = np.array([148, 135, 232, 232.0], dtype=np.float32)
+    #box = np.array([138, 119, 238, 265.0], dtype=np.float32)
     box = np.array([first_frame['xmin'], first_frame['ymin'], first_frame['xmax'], first_frame['ymax']], dtype=np.float32)
     _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
         inference_state=inference_state,
@@ -217,7 +218,7 @@ for obj in objects:
         plt.title(f"frame {out_frame_idx}")
         plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
         for out_obj_id, out_mask in video_segments[out_frame_idx].items():
-            print("saved mask for object {obj} with frame {frame_names[out_frame_idx]}")
+            print('saved mask for object', obj, 'with frame', frame_names[out_frame_idx])
             #show_mask(out_mask, plt.gca(), obj_id=out_obj_id)
             save_mask(out_mask, out_frame_idx)
             # save out_mask as a npy file with name as frame_name without jpy extension

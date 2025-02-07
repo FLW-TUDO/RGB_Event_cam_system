@@ -18,18 +18,42 @@ from dvs_msgs.msg import EventArray
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image
 import numpy as np
+import tensorflow as tf
 from datetime import datetime
 
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
-obj = ['human', 'zivid','hupwagen']
-objects = ['blue_klt']
-object_name = 'scene1_2'
+#obj = ['human', 'zivid','hupwagen']
+objects = ['big_klt']
+object_name = 'speed'
 human = True
-hup = True
+hup = False
+table = False
 num = [1]
 flag = 1
 rgb_topic = '/rgb/image_raw'
+
+def linear_to_srgb(image):
+    return tf.where(
+        image <= 0.0031308,
+        image * 12.92,
+        1.055 * tf.pow(image, 1.0 / 2.4) - 0.055,
+    )
+
+def process_image(rgb_image):
+    # Normalize the image to [0, 1]
+    linear_rgb_image = rgb_image / 255.0
+
+    # Convert to TensorFlow tensor
+    linear_rgb_tensor = tf.convert_to_tensor(linear_rgb_image, dtype=tf.float32)
+
+    # Convert Linear RGB to sRGB
+    srgb_tensor = linear_to_srgb(linear_rgb_tensor)
+    srgb_image = srgb_tensor.numpy()  # Convert back to NumPy array
+
+    # Clip and scale back to [0, 255]
+    srgb_image = np.clip(srgb_image * 255.0, 0, 255).astype(np.uint8)
+    return srgb_image
 
 
 for k in num:
@@ -41,9 +65,6 @@ for k in num:
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        if(len(obj) > 1):
-
-            bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/' + object_name + '.bag')
         path = '/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/'
         bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/' + object_name + '.bag')
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
@@ -54,6 +75,7 @@ for k in num:
         vicon_human = '/vicon/markers'
         vicon_human_object = '/vicon/human_head/human_head'
         vicon_hupwagen_object = '/vicon/hupwagen/hupwagen'
+        vicon_table_object = '/vicon/table/table'
 
         events_left = []
         events_right =[]
@@ -69,7 +91,7 @@ for k in num:
         count = 0
 
         if flag == 1:
-
+            '''
             # mkdir if path does not exist
             if not os.path.exists(path + 'event_cam_left_npy'):
                 os.mkdir(path + 'event_cam_left_npy')
@@ -111,7 +133,7 @@ for k in num:
 
                 np.save(path + 'event_cam_right_npy/' + str(t) + '.npy', event_data)
             print('saved event cam right npy files')
-
+            '''
             count = 0
             if not os.path.exists(path + '/vicon_data'):
                 os.makedirs(path + '/vicon_data')
@@ -127,13 +149,14 @@ for k in num:
                     msg.transform.rotation.z,
                     msg.transform.rotation.w]
                 # save t, translation and rotation to a json file
-                vicon_data[count] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
+                vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
                 #vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
                 count += 1
 
             with open(path + '/vicon_data/event_cam_sys.json', 'w') as json_file:
                 json.dump(vicon_data, json_file, indent=2)
             print('saved event cam data')
+
 
             image_topic = bag.read_messages(rgb_topic)
             if not os.path.exists(path + '/rgb'):
@@ -144,7 +167,7 @@ for k in num:
                 bridge = CvBridge()
                 cv_image = bridge.imgmsg_to_cv2(b.message, "bgr8")
                 # cv_image.astype(np.uint8)
-
+                cv_image = process_image(cv_image)
                 # cv_image = cv_image[45:480,0:595]
                 # cv_image = cv2.resize(cv_image, (640,480))
                 cv2.imwrite(path + '/rgb/' + str(b.timestamp) + '.png', cv_image)
@@ -225,6 +248,8 @@ for k in num:
             with open(path + 'vicon_data/' + 'hupwagen.json', 'w') as json_file:
                 json.dump(vicon_data, json_file, indent=2)
             print('saved hupwagen data')
+
+
 
     bag.close()
     print('Done extracting data')

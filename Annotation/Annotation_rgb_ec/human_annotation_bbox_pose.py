@@ -12,13 +12,14 @@ import torch
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box", 11: "human"
 
-object_name = 'scene10_1'
+object_name = 'scene10_2'
 
 threshold = 10000000
 last = False
 iter = 1
-objects = ['hupwagen','human']
-
+# list objects such as human, hupwagen, etc
+objects = ['human']
+obj_iter = 0
 human = True
 for obj in objects:
 
@@ -145,8 +146,7 @@ for obj in objects:
 
         event_cam_left = path_event_cam_left_img + str(ec_left) + ".png"
         event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
-        if count>412:
-            print('here')
+
         data_human_bbox = check_human_bbox_data(data_human_bbox, k, previous_t)
         vertices = get_humanBBox_vertices(data_human_bbox, k)
         previous_t = k
@@ -156,19 +156,19 @@ for obj in objects:
         H_rgb_2_vicon = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_vicon'])
         # True is given if you want to save the bounding box and pose data of the object.
         img_rgb = project_points_to_image_plane(H_rgb_2_vicon, k, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, True, human)
+                                                        camera_matrix, distortion_coefficients, output_dir_rgb, obj_iter, True, human)
         #cv2.imwrite(rgb_img_path, img_rgb)
 
         ############ Event camera 1 ############
         H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_vicon'])
         img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_cam_left, points_3d, vertices,
-                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, True, human)
+                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, obj_iter, True, human)
         #cv2.imwrite(event_cam_left, img_event_cam_1)
 
         ############ Event camera 2 ############
         H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_vicon'])
         img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_cam_right, points_3d, vertices,
-                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, True, human)
+                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, obj_iter, True, human)
         #cv2.imwrite(event_cam_right, img_event_cam_2)
         count += 1
 

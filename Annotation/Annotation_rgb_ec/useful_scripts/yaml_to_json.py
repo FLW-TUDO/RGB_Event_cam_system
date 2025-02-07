@@ -28,5 +28,5 @@ data = {'camera_matrix': camera_matrix, 'distortion_coefficients': distortion_co
         'camera_mtx_cam1': camera_mtx_cam1, 'distortion_coeffs_cam1': distortion_coeffs_cam1,
         'camera_mtx_cam2': camera_mtx_cam2, 'distortion_coeffs_cam2': distortion_coeffs_cam2,
         'H_cam1_2_rgb': H_cam1_2_rgb, 'H_cam2_cam1': H_cam2_cam1}
-with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'w') as file:
+with open('/Annotation/camera_params.json', 'w') as file:
     json.dump(data, file)
