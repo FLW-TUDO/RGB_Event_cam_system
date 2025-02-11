@@ -82,6 +82,7 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
                                                  H_world_2_rgb[:3, 3])
         # Sometimes a few msgs from start and end go missing. Hence, we need to check if the timestamp exists in the vicon_object_data
         if str(v['timestamp']) not in vicon_object_data.keys():
+            print('timestamp not found in vicon_object_data')
             continue
         t_x = vicon_object_data[str(v['timestamp'])]['translation'][0]
         t_y = vicon_object_data[str(v['timestamp'])]['translation'][1]
@@ -201,21 +202,53 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         vertices -= translation_vector
         points_3d -= translation_vector
 
+    if object_id == 7:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
     if object_id == 8:
-        translation_vector = np.array([0, 0, 0.05]) # For the recorded videos in nov 2024 the value was 0.05. The z changed because the marker combination changed on zivid box
+        translation_vector = np.array([0, 0, -(object_len_z + 100) / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 9:
-        rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
-        vertices = np.dot(vertices, rotation_matrix)
-        points_3d = np.dot(points_3d, rotation_matrix)
-        translation_vector = np.array([0, 0, 0.0])
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 10:
-        translation_vector = np.array([0, 0.0, 0.08])
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 11:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 12:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 13:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 14:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 15:
+        translation_vector = np.array([0, 0, -(object_len_z - 400) / 2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 16:
+        translation_vector = np.array([0, 0, -object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -241,7 +274,7 @@ def save_bbox_values(output_dir, object_2d_transform_points, timestamp):
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
-def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, object_2d_vertices, img_cam, time_rgb):
+def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, object_2d_vertices, img_cam, time_rgb, root_dir):
     #################################### Exporting bounding box and pose values to a json file ####################################
     # transform object_3d_transform_points of size (8,1,2) to (8,2)
     object_3d_transform_vertices = object_3d_transform_vertices.reshape(-1, 3)
@@ -253,15 +286,16 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
     zmin = np.min(object_3d_transform_vertices[:, 2])
     zmax = np.max(object_3d_transform_vertices[:, 2])
     # Create a blank mask (same size as image, single channel)
+    time_rgb = 0
     if time_rgb != 0:
         object_mask = np.zeros(img_cam.shape[:2], dtype=np.uint8)
         hull = cv2.convexHull(np.array(object_2d_vertices))
         cv2.fillPoly(object_mask, [hull], 255)
         # Save or display the mask
-        cv2.imwrite("/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/masks_rgb/mask_" + str(time_rgb) + ".jpg", object_mask)
+        cv2.imwrite(root_dir + "masks_rgb/mask_" + str(time_rgb) + ".jpg", object_mask)
         # load masks for human
         data = np.load(
-            '/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/output_masks_human_img/' + str(time_rgb) + '.npy')
+            root_dir + 'output_masks_human_img/' + str(time_rgb) + '.npy')
         # Convert data from (1,1536,2048) to (1536,2038. visualise it in a camera frame of size 1536x2048
         human_mask = data[0]
         #human_maksk has values as true and false. Convert this to 1 and 0
@@ -283,7 +317,7 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
         json_file.write(json.dumps(Bbox) + '\n')
 
 def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d, vertices,
-                                  camera_matrix, distortion_coefficients, output_dir, obj_iter =0, save = False, human = False):
+                                  camera_matrix, distortion_coefficients, output_dir, root, obj_iter =0, save = False, human = False):
     #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
      #                                  distortion_coefficients)
     #points_2d_cam1 = np.round(points_2d_cam1[0]).astype(int)
@@ -314,7 +348,7 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     center_2d = center_2d[0, 0]
     if save:
         save_bbox_values(output_dir, object_2d_vertices, k)
-        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices, object_2d_vertices, img_temp_cam, rgb_t)
+        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices, object_2d_vertices, img_temp_cam, rgb_t, root)
         save_pose(H_cam_2_object, center_3d, output_dir, k)
 
     # create a mask

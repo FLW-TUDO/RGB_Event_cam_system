@@ -12,13 +12,13 @@ import torch
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box", 11: "human"
 
-object_name = 'scene10_2'
+object_name = 'scene_12'
 
 threshold = 10000000
 last = False
 iter = 1
 # list objects such as human, hupwagen, etc
-objects = ['human']
+objects = ['human', 'hupwagen']
 obj_iter = 0
 human = True
 for obj in objects:
@@ -26,7 +26,7 @@ for obj in objects:
     # import object data from json file
     with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
         obj_model_data = json.load(file)
-    root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/' + object_name
+    root_dir = '/media/eventcamera/Windows/dataset_7_feb/' + object_name
     human_bbox_path = root_dir + '/vicon_data/' + obj + '_bbox.json'
     path = root_dir + '/' + object_name
     json_path_camera_sys = root_dir + '/vicon_data/event_cam_sys.json'
@@ -34,9 +34,9 @@ for obj in objects:
     path_event_cam_left_img = root_dir  + '/event_cam_left/e2calib/'
     path_event_cam_right_img = root_dir + '/event_cam_right/e2calib/'
     output_dir = root_dir + '/annotation_' + obj + '/'
-    output_dir_rgb = output_dir + obj + '_rgb'
-    output_dir_event_cam_left = output_dir + obj + '_ec_left'
-    output_dir_event_cam_right = output_dir + obj + '_ec_right'
+    output_dir_rgb = output_dir + obj + '_rgb_'
+    output_dir_event_cam_left = output_dir + obj + '_ec_left_'
+    output_dir_event_cam_right = output_dir + obj + '_ec_right_'
     rgb_image_path = root_dir + '/rgb/'
     iter += 1
     # if any of the above paths does not exist, create the path
@@ -155,20 +155,20 @@ for obj in objects:
         ############ RGB Image ############
         H_rgb_2_vicon = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_vicon'])
         # True is given if you want to save the bounding box and pose data of the object.
-        img_rgb = project_points_to_image_plane(H_rgb_2_vicon, k, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, obj_iter, True, human)
+        img_rgb = project_points_to_image_plane(H_rgb_2_vicon, k, 0, rgb_img_path, points_3d, vertices,
+                                                        camera_matrix, distortion_coefficients, output_dir_rgb, root_dir, obj_iter, True, human)
         #cv2.imwrite(rgb_img_path, img_rgb)
 
         ############ Event camera 1 ############
         H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_vicon'])
-        img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_cam_left, points_3d, vertices,
-                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, obj_iter, True, human)
+        img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, 0,event_cam_left, points_3d, vertices,
+                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, root_dir, obj_iter, True, human)
         #cv2.imwrite(event_cam_left, img_event_cam_1)
 
         ############ Event camera 2 ############
         H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_vicon'])
-        img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_cam_right, points_3d, vertices,
-                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, obj_iter, True, human)
+        img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, 0, event_cam_right, points_3d, vertices,
+                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, root_dir, obj_iter, True, human)
         #cv2.imwrite(event_cam_right, img_event_cam_2)
         count += 1
 

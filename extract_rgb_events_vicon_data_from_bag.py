@@ -24,10 +24,10 @@ from datetime import datetime
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 #obj = ['human', 'zivid','hupwagen']
-objects = ['big_klt']
-object_name = 'speed'
+objects = ['MR6D1','MR6D2','MR6D3']
+object_name = 'scene_12'
 human = True
-hup = False
+hup = True
 table = False
 num = [1]
 flag = 1
@@ -65,8 +65,8 @@ for k in num:
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        path = '/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/'
-        bag = rosbag.Bag('/home/eventcamera/data/dataset/dataset_23_jan/' + object_name + '/' + object_name + '.bag')
+        path = '//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/'
+        bag = rosbag.Bag('//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/' + object_name + '.bag')
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
         events_topic_left = '/dvxplorer_left/events'
         events_topic_right = '/dvxplorer_right/events'
@@ -74,7 +74,7 @@ for k in num:
         vicon_object = '/vicon/' + object + '/' + object
         vicon_human = '/vicon/markers'
         vicon_human_object = '/vicon/human_head/human_head'
-        vicon_hupwagen_object = '/vicon/hupwagen/hupwagen'
+        vicon_hupwagen_object = '/vicon/hupwagen_body/hupwagen_body'
         vicon_table_object = '/vicon/table/table'
 
         events_left = []
@@ -133,7 +133,7 @@ for k in num:
 
                 np.save(path + 'event_cam_right_npy/' + str(t) + '.npy', event_data)
             print('saved event cam right npy files')
-            '''
+            
             count = 0
             if not os.path.exists(path + '/vicon_data'):
                 os.makedirs(path + '/vicon_data')
@@ -177,7 +177,7 @@ for k in num:
             print('Done Extracting RGB images')
 
             flag = 0
-
+            '''
         if not os.path.exists(path + '/vicon_data'):
             os.makedirs(path + '/vicon_data')
         vicon_data = {}

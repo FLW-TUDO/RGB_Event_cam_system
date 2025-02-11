@@ -11,9 +11,9 @@ import torch
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_name = 'scene3_1'
+object_name = 'scene_12'
 #obj_name = 'blue_klt'
-objects = ['big_klt']
+objects = ['MR6D13']
 
 threshold = 10000000
 # import object data from json file
@@ -21,42 +21,58 @@ with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/o
     obj_model_data = json.load(file)
 obj_iter = 0
 for obj_name in objects:
-    if obj_name == 'pallet':
+    if obj_name == 'MR6D1':
          object_id = 1
-    elif obj_name == 'small_klt':
+    elif obj_name == 'MR6D2':
             object_id = 2
-    elif obj_name == 'big_klt':
+    elif obj_name == 'MR6D3':
             object_id = 3
-    elif obj_name == 'blue_klt':
+    elif obj_name == 'MR6D4':
             object_id = 4
-    elif obj_name == 'shogun_box':
+    elif obj_name == 'MR6D5':
             object_id = 5
-    elif obj_name == 'kronen':
+    elif obj_name == 'MR6D6':
             object_id = 6
-    elif obj_name == 'brinkhoff_bier_crate':
+    elif obj_name == 'MR6D7':
             object_id = 7
-    elif obj_name == 'zivid':
+    elif obj_name == 'MR6D8':
             object_id = 8
-    elif obj_name == 'dell':
+    elif obj_name == 'MR6D9':
             object_id = 9
-    elif obj_name == 'ciatronic':
+    elif obj_name == 'MR6D10':
             object_id = 10
+    elif obj_name == 'MR6D11':
+            object_id = 11
+    elif obj_name == 'MR6D12':
+            object_id = 12
+    elif obj_name == 'MR6D13':
+            object_id = 13
+    elif obj_name == 'MR6D14':
+            object_id = 14
+    elif obj_name == 'MR6D15':
+            object_id = 15
+    elif obj_name == 'MR6DD16':
+            object_id = 16
+
+
+
 
     object_len_x = obj_model_data[str(object_id)]['size_x']
     object_len_y = obj_model_data[str(object_id)]['size_y']
     object_len_z = obj_model_data[str(object_id)]['size_z']
-    root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/'
+    root_dir = '/media/eventcamera/Windows/dataset_7_feb/'
     path = root_dir + object_name + '/' + object_name
     json_path_camera_sys = root_dir + object_name + '/vicon_data/event_cam_sys.json'
     json_path_object = root_dir + object_name + '/vicon_data/' + obj_name + '.json'
-    path_event_cam_left_img = root_dir + object_name + '/event_cam_left/e2calib/'
+    path_event_cam_left_img = root_dir + object_name + '/event_images/'
     path_event_cam_right_img = root_dir + object_name + '/event_cam_right/e2calib/'
     output_dir = root_dir + object_name + '/annotation/'
     output_dir_rgb = root_dir + object_name + '/annotation/rgb_' + obj_name + '_'
     output_dir_event_cam_left = root_dir + object_name + '/annotation/ec_left_' + obj_name + '_'
     output_dir_event_cam_right = root_dir + object_name + '/annotation/ec_right_' + obj_name + '_'
     rgb_image_path = root_dir + object_name + '/rgb/'
-    obj_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/obj_' + str(object_id) + '.ply'
+    object_id_padded = f"{object_id:06d}"
+    obj_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/obj_' + str(object_id_padded) + '.ply'
 
     # if any of the above paths does not exist, create the path
     if not os.path.exists(output_dir):
@@ -136,7 +152,7 @@ for obj_name in objects:
     H_cam2_cam1 = np.array(data['H_cam2_cam1'])
 
     ######### Here we save the transformations for the dataset. Annotations are not happening here. #########
-    # Read the vicon coordinates of the even camera system. Traverse through the coordinates
+    # Read the vicon coordinates of the event camera system.
     with open(json_path_camera_sys, 'r') as f:
         vicon_data_camera_sys = json.load(f)
     save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
@@ -175,7 +191,7 @@ for obj_name in objects:
         H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
         # True is given if you want to save the bounding box and pose data of the object.
         img_rgb = project_points_to_image_plane(H_rgb_2_object, k, rgb_t, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, obj_iter, True)
+                                                        camera_matrix, distortion_coefficients, output_dir_rgb, root_dir, obj_iter, True)
 
         if len(objects) > 1:
             cv2.imwrite(rgb_img_path, img_rgb)
@@ -184,14 +200,14 @@ for obj_name in objects:
         event_t = 0
         H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_object'])
         img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_t, event_cam_left, points_3d, vertices,
-                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, obj_iter, True)
+                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, root_dir, obj_iter, True)
         if len(objects) > 1:
             cv2.imwrite(event_cam_left, img_event_cam_1)
 
         ############ Event camera 2 ############
         H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_object'])
         img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_t, event_cam_right, points_3d, vertices,
-                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, obj_iter, True)
+                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, root_dir, obj_iter, True)
         if len(objects) > 1:
             cv2.imwrite(event_cam_right, img_event_cam_2)
 

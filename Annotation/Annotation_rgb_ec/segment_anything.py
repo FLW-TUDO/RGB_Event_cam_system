@@ -43,9 +43,9 @@ else:
 print(f"using device: {device}")
 
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
-root_dir = '/home/eventcamera/data/dataset/dataset_23_jan/scene3_1'
-video_dir = "/home/eventcamera/data/dataset/dataset_23_jan/scene3_1/rgb"
-objects = ['human']
+root_dir = '/media/eventcamera/Windows/dataset_7_feb/scene_12'
+video_dir = "/media/eventcamera/Windows/dataset_7_feb/scene_12/rgb_jpg_2"
+objects = ['hupwagen']
 
 if device.type == "cuda":
     # use bfloat16 for the entire notebook
@@ -90,8 +90,13 @@ def save_mask(mask, out_frame_idx, obj_id=None):
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     save_path = mask_save_path + frame_names[out_frame_idx]
     # save mask image
-    plt.imshow(mask_image)
+    fig, ax = plt.subplots()
+
+    ax.set_frame_on(False)
+    ax.axis('off')
+    ax.imshow(mask_image)
     plt.savefig(save_path)
+    plt.close(fig)
 
 
 def show_points(coords, labels, ax, marker_size=200):
@@ -125,6 +130,7 @@ frame_names = [
       if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
 ]
 frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
+print('check')
 
 # take a look the first video frame
 frame_idx = 0

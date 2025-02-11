@@ -15,12 +15,10 @@ from scipy.spatial.transform import Rotation as R
 square_size_meter = 0.125
 image_size = (2048, 1536)
 # Third calib is the original calibration as on 20 Aug 2024
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/third_calib/'
+data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/sixth_calib/'
 checker_board_size = (8, 5)
 #params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
 #distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
-distortion_coefficients = np.array([-0.16662668463462832,   0.09713587034707222,
-    0.00044649384097793574,    0.0006466275306382167])
 # =============================================================================
 
 json_path = os.path.join(data_path, 'vicon_coordinates.json')
@@ -111,7 +109,7 @@ rvecs = [cv2.Rodrigues(rvec)[0] for rvec in r]
 
 # print(mtx, 'dist', dist)
 # convert tvecs from pixels to meters
-# TODO this conversion is not correct
+
 # tvecs = np.array(t)  # * square_size_meter
 # iterate over the length of tvecs and rvecs
 R_cam_optical_2_target_vecs = rvecs
@@ -160,6 +158,34 @@ for i in range(len(data)):
 
 # calculate the eye in hand calibration. Try with PARK, HORAUD and ANDREFF
 R, t = cv2.calibrateHandEye(R_base_2_vicon_cam_vecs, t_base_2_vicon_cam_vecs, R_cam_optical_2_target_vecs, t_cam_optical_2_target_vecs, method=cv2.CALIB_HAND_EYE_ANDREFF)
+# Compute the error of the hand-eye calibration
+error = cv2.norm(np.matmul(R_base_2_vicon_cam_vecs[0], R) - np.matmul(R, R_cam_optical_2_target_vecs[0])) + cv2.norm(t_base_2_vicon_cam_vecs[0] + np.matmul(R, t_cam_optical_2_target_vecs[0]))
+print('error = ', error)
+
+# Compute residuals
+rotation_residuals = []
+translation_residuals = []
+
+for i in range(len(R_base_2_vicon_cam_vecs)):
+    # Compute rotation residual
+    R_error = np.matmul(R_base_2_vicon_cam_vecs[i], R) - np.matmul(R, R_cam_optical_2_target_vecs[i])
+    rotation_error_norm = np.linalg.norm(R_error)  # Frobenius norm for rotation difference
+
+    # Compute translation residual
+    t_error = t_base_2_vicon_cam_vecs[i] + np.matmul(R, t_cam_optical_2_target_vecs[i]) - t
+    translation_error_norm = np.linalg.norm(t_error)  # Euclidean norm for translation difference
+
+    # Store residuals
+    rotation_residuals.append(rotation_error_norm)
+    translation_residuals.append(translation_error_norm)
+
+# Print residuals
+print(f"Rotation residuals (norm): {rotation_residuals}")
+print(f"Translation residuals (norm): {translation_residuals}")
+
+# Compute overall mean residuals
+mean_rotation_residual = np.mean(rotation_residuals)
+mean_translation_residual = np.mean(translation_residuals)
 
 # homogenous vicon cam to cam optical
 H = np.hstack((R, t))

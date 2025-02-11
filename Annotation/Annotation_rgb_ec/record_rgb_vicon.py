@@ -44,7 +44,7 @@ image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
 vicon_subscriber = rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 
 # Folder to save images
-save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/calib_23_oct/'
+save_folder = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/sixth_calib/'
 os.makedirs(save_folder, exist_ok=True)
 image_dir = os.path.join(save_folder, 'images')
 os.makedirs(image_dir, exist_ok=True)
@@ -56,13 +56,13 @@ vicon_data = {}
 # Loop to capture and save image and vicon data on 'Enter' key press
 count = 0
 while not rospy.is_shutdown():
-    key = input("press Enter to capture sample: " + str(count))
+    key = input("press q to quit. press Enter to capture sample: " + str(count))
     if key == 'q':
         break
     time.sleep(0.1)
     # Save image to folder
     image_filename = str(count) + '.png'
-    #cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
+    cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
     # extract the timestamp from the vicon data and save as nano secs
     timestamp = received_vicon.header.stamp.secs + received_vicon.header.stamp.nsecs * 1e-9
     # delete the decimal point and join bothe the strings
