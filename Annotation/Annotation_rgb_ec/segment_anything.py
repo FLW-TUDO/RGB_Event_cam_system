@@ -32,6 +32,7 @@ import torch
 import matplotlib.pyplot as plt
 from PIL import Image
 import json
+import cv2
 
 # select the device for computation
 if torch.cuda.is_available():
@@ -90,13 +91,14 @@ def save_mask(mask, out_frame_idx, obj_id=None):
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     save_path = mask_save_path + frame_names[out_frame_idx]
     # save mask image
-    fig, ax = plt.subplots()
+    #fig, ax =  plt.subplots(figsize=(mask_image.shape[1] / 100, mask_image.shape[0] / 100), dpi=100)
 
-    ax.set_frame_on(False)
-    ax.axis('off')
-    ax.imshow(mask_image)
+    #ax.set_frame_on(False)
+    #ax.axis('off')
+    #plt.imshow(mask_image)
+    #cv2.imwrite(save_path, mask_image)
     plt.savefig(save_path)
-    plt.close(fig)
+    #plt.close(fig)
 
 
 def show_points(coords, labels, ax, marker_size=200):
@@ -136,7 +138,7 @@ print('check')
 frame_idx = 0
 plt.figure(figsize=(9, 6))
 plt.title(f"frame {frame_idx}")
-plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_idx])))
+#plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_idx])))
 
 first_iter = True
 for obj in objects:

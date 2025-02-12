@@ -13,7 +13,7 @@ import torch
 
 object_name = 'scene_12'
 #obj_name = 'blue_klt'
-objects = ['MR6D13']
+objects = ['MR6D4']
 
 threshold = 10000000
 # import object data from json file
@@ -53,9 +53,6 @@ for obj_name in objects:
             object_id = 15
     elif obj_name == 'MR6DD16':
             object_id = 16
-
-
-
 
     object_len_x = obj_model_data[str(object_id)]['size_x']
     object_len_y = obj_model_data[str(object_id)]['size_y']
@@ -178,7 +175,7 @@ for obj_name in objects:
         event_cam_left = path_event_cam_left_img + str(ec_left) + ".png"
         event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
 
-        ####### Import object ply file and create a mesh for visualization #######
+        ####### Import object ply file and create a mesh for visualization #######1
         obj_geometry = trimesh.load_mesh(obj_path)
         if not isinstance(obj_geometry, trimesh.Trimesh):
             print("The object is not a Trimesh object. It is a", type(obj_geometry))
@@ -187,11 +184,12 @@ for obj_name in objects:
         vertices = np.array(trimesh_object.vertices) / 1000
         vertices, points_3d = get_translated_points_vertice(object_id, vertices, points_3d, object_len_z)
 
+        folder_path = root_dir + object_name
         ############ RGB Image ############
         H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
         # True is given if you want to save the bounding box and pose data of the object.
         img_rgb = project_points_to_image_plane(H_rgb_2_object, k, rgb_t, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, root_dir, obj_iter, True)
+                                                        camera_matrix, distortion_coefficients, output_dir_rgb, folder_path, obj_iter, True)
 
         if len(objects) > 1:
             cv2.imwrite(rgb_img_path, img_rgb)
