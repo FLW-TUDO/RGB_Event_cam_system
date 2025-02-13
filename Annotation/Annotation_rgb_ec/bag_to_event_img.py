@@ -5,22 +5,23 @@ import cv2
 import threading
 import queue
 
-objects = ['MR6D1','MR6D2','MR6D3']
-object_name = 'scene_12'
-bag = rosbag.Bag('//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/' + object_name + '.bag')
-path = '//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/'
-events_topic_left = '/dvxplorer_left/events'
+object_name = 'scene_1'
+bag = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/left.bag')
+path = '/media/eventcamera/event_data/' + object_name + '/'
 
+# Event camera topics
+event_topics = {
+    "left": "/dvxplorer_left/events",
+    "right": "/dvxplorer_right/events"
+}
 
-# Use a queue for processing batches
-event_queue = queue.Queue(maxsize=10)
 # Output directory for images
-output_dir = "//media/eventcamera/Windows/dataset_7_feb/" + object_name + "/event_images"
+output_dir = path + "event_images"
 os.makedirs(output_dir, exist_ok=True)
+os.makedirs(os.path.join(output_dir, "left"), exist_ok=True)
+os.makedirs(os.path.join(output_dir, "right"), exist_ok=True)
 
-# Open the ROS bag file
-#bag = rosbag.Bag(bag_file, "r")
-
+# Time step for slicing (in nanoseconds) - Example: 10ms
 time_step_ns = 10_000_000
 
 # Check for GPU acceleration (CUDA support)
@@ -31,11 +32,16 @@ try:
 except:
     use_gpu = False
 
+# Event queues for both cameras
+event_queues = {
+    "left": queue.Queue(maxsize=10),
+    "right": queue.Queue(maxsize=10)
+}
 
-# Function to process events and generate images
-def process_events():
+# Function to process events and generate images for a given camera
+def process_events(camera_name):
     while True:
-        batch = event_queue.get()
+        batch = event_queues[camera_name].get()
         if batch is None:
             break
 
@@ -60,46 +66,57 @@ def process_events():
                     img[y, x] = color
 
         # Save image using a clean timestamp format (integer nanoseconds)
-        image_filename = os.path.join(output_dir, f"{int(batch_timestamp)}.png")
+        image_filename = os.path.join(output_dir, camera_name, f"{int(batch_timestamp)}.png")
         cv2.imwrite(image_filename, img)
         print(f"Saved {image_filename} with {len(events)} events.")
 
+# Start processing threads for both cameras
+processing_threads = {}
+for cam in event_topics.keys():
+    processing_threads[cam] = threading.Thread(target=process_events, args=(cam,))
+    processing_threads[cam].start()
 
-# Start the processing thread
-processing_thread = threading.Thread(target=process_events)
-processing_thread.start()
 
-current_batch = []
-current_time_window = None  # Start time of the current batch
+# Track current batches and time windows for both cameras
+current_batches = {"left": [], "right": []}
+current_time_windows = {"left": None, "right": None}
 
-for topic, msg, t in bag.read_messages(topics=[events_topic_left]):
+# Read messages from both topics
+for topic, msg, t in bag.read_messages(topics=event_topics.values()):
+    camera_name = "left" if topic == event_topics["left"] else "right"
+
     for event in msg.events:
         event_time_ns = event.ts.to_nsec()  # Get event timestamp in nanoseconds
 
         # Initialize time window on first event
-        if current_time_window is None:
-            current_time_window = (event_time_ns // time_step_ns) * time_step_ns
+        if current_time_windows[camera_name] is None:
+            current_time_windows[camera_name] = (event_time_ns // time_step_ns) * time_step_ns
 
         # If the event belongs to the current time window, add it to the batch
-        if event_time_ns < current_time_window + time_step_ns:
-            current_batch.append((event.x, event.y, event.polarity))
+        if event_time_ns < current_time_windows[camera_name] + time_step_ns:
+            current_batches[camera_name].append((event.x, event.y, event.polarity))
         else:
             # Send previous batch for processing
-            if current_batch:
-                event_queue.put((current_time_window, current_batch))
+            if current_batches[camera_name]:
+                event_queues[camera_name].put((current_time_windows[camera_name], current_batches[camera_name]))
 
             # Move to the next time window
-            current_time_window = (event_time_ns // time_step_ns) * time_step_ns
-            current_batch = [(event.x, event.y, event.polarity)]  # Start new batch
+            current_time_windows[camera_name] = (event_time_ns // time_step_ns) * time_step_ns
+            current_batches[camera_name] = [(event.x, event.y, event.polarity)]  # Start new batch
 
 # Process remaining events
-if current_batch:
-    event_queue.put((current_time_window, current_batch))
+for cam in event_topics.keys():
+    if current_batches[cam]:
+        event_queues[cam].put((current_time_windows[cam], current_batches[cam]))
 
-# Signal processing thread to stop
-event_queue.put(None)
-processing_thread.join()
+# Signal processing threads to stop
+for cam in event_topics.keys():
+    event_queues[cam].put(None)
+
+# Wait for threads to finish
+for cam in processing_threads.keys():
+    processing_threads[cam].join()
 
 # Close the ROS bag
 bag.close()
-print("Event visualization completed.")
+print("Event visualization completed for both cameras.")

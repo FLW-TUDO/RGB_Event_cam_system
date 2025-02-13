@@ -44,9 +44,9 @@ else:
 print(f"using device: {device}")
 
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
-root_dir = '/media/eventcamera/Windows/dataset_7_feb/scene_12'
-video_dir = "/media/eventcamera/Windows/dataset_7_feb/scene_12/rgb_jpg_2"
-objects = ['hupwagen']
+root_dir = '/media/eventcamera/Windows/dataset_7_feb/scene_18'
+video_dir = "/media/eventcamera/Windows/dataset_7_feb/scene_18/rgb_jpg"
+objects = ['human']
 
 if device.type == "cuda":
     # use bfloat16 for the entire notebook

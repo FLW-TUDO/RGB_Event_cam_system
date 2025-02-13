@@ -21,12 +21,12 @@ objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kro
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 obj = ['human_LH','human_RH', 'human_LL', 'human_RL', 'human_head', 'human_waist']
 num = [1]
-objects = ['hupwagen'] # list objects other than human. such as table, hupwagen, etc.
+objects = [] # list objects other than human. such as table, hupwagen, etc.
 flag = 1
 count = 0
-folder_name = 'scene_12'
+folder_name = 'scene_1'
 vicon_data = {}
-root = '/media/eventcamera/Windows/dataset_7_feb/'
+root = '/media/eventcamera/event_data/'
 path = root + folder_name + '/'
 
 def get_rotation_hupwagen(timestamp):
@@ -54,7 +54,7 @@ for k in num:
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        bag = rosbag.Bag(root + folder_name + '/' + folder_name + '.bag')
+        bag = rosbag.Bag(root + folder_name + '/all.bag')
 
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
         # from the bag file
@@ -161,10 +161,10 @@ for k in num:
     save_index = []
     count = 0
     entry_flag = True
-    bag = rosbag.Bag(root + folder_name + '/' + folder_name + '.bag')
+    bag = rosbag.Bag(root + folder_name + '/all.bag')
     # define an empty string
     previous_t = ''
-    '''
+
     for top, msg, tim in bag.read_messages(vicon_object):
 
         entry_flag = True
@@ -225,7 +225,7 @@ for k in num:
                 json.dump(vicon_data, json_file, indent=2)
     print('saved human bbox data')
 
-    '''
+
     vicon_object = '/vicon/markers'
     vicon_data = {}
     save_index = []

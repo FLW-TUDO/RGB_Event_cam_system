@@ -102,9 +102,7 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
 
         # project object (x,y,z) in rgb coordinate to cam1 coordinate
         H_cam1_2_object = np.matmul(H_cam1_2_rgb, H_rgb_2_object)
-        t_cam1_2_object = H_cam1_2_object[:3, 3]
         H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
-        t_cam2_2_object = H_cam2_2_object[:3, 3]
         H_cam1_2_vicon = np.matmul(H_cam1_2_rgb, H_rgb_2_world)
         H_cam2_2_vicon = np.matmul(H_cam2_cam1, H_cam1_2_vicon)
         transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_rgb_2_vicon': H_rgb_2_world.tolist(),
@@ -193,6 +191,11 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 4:
+        translation_vector = np.array([0, 0, -object_len_z/2000])
+        vertices -= translation_vector
+        points_3d -= translation_vector
+
+    if object_id == 5:
         translation_vector = np.array([0, 0, -object_len_z/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
@@ -303,8 +306,13 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
         human_mask = data[0]
         #human_maksk has values as true and false. Convert this to 1 and 0
         human_mask = human_mask.astype(np.uint8)  # Convert True -> 1, False -> 0
+
         if os.path.exists(root_dir + '/output_masks_hupwagen_img/'):
-            mask_hupwagen = cv2.imread(root_dir + "/output_masks_hupwagen_img/" + str(time_rgb) + '.jpg', cv2.IMREAD_GRAYSCALE)
+            data_hupwagen = np.load(
+                root_dir + '/output_masks_hupwagen_img/' + str(time_rgb) + '.npy')
+            mask_hupwagen = data_hupwagen[0]
+            mask_hupwagen = mask_hupwagen.astype(np.uint8)
+            # mask_hupwagen = cv2.imread(root_dir + "/output_masks_hupwagen_img/" + str(time_rgb) + '.jpg', cv2.IMREAD_GRAYSCALE)
             object_mask = object_mask * (1 - mask_hupwagen)
         # Subtract human mask from object mask
         visible_object_mask = object_mask * (1 - human_mask)  # Remove overlapping region
@@ -380,8 +388,10 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     for point in object_2d_points:
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
     '''
+    '''
     for point in object_2d_vertices:
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
+    '''
     img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
     # cv2 show
     #cv2.imshow('img', cv2.resize(img_temp_cam, (0, 0), fx=0.5, fy=0.5))
@@ -401,11 +411,21 @@ def save_pose(H_cam_optical_2_point, center_3d, output_dir, timestamp):
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(data) + '\n')
 
-def check_human_bbox_data(data, k, previous_t):
+def find_closest_timestamp(data, k):
+    if str(k) in data.keys():  # Check if k exists in data
+        return k
+    elif data:  # Ensure data is not empty before searching
+        print('Timestamp',k,'is missing. Probably a drop in event camera frame')
+        closest_k = min(data.keys(), key=lambda x: abs(int(x) - k))  # Find the closest timestamp
+        return closest_k
+    else:
+        return None  # Return None if data is empty
 
+def check_human_bbox_data(data, k, previous_t):
+    k = find_closest_timestamp(data, k)
     # compare all the x,y and z values at current time with the previous time. If the mod of difference is greater than 0.6 then keep the previous value
     # else keep the current value
-    threshold = 600
+    threshold = 6000
     if abs(data[str(k)]['min_x'] - data[str(previous_t)]['min_x']) > threshold:
         data[str(k)]['min_x'] = data[str(previous_t)]['min_x']
         print('inconsistent min_x')
@@ -424,7 +444,7 @@ def check_human_bbox_data(data, k, previous_t):
     if abs(data[str(k)]['max_z'] - data[str(previous_t)]['max_z']) > threshold:
         data[str(k)]['max_z'] = data[str(previous_t)]['max_z']
         print('inconsistent max_z')
-    return data
+    return data,k
 
 def get_humanBBox_vertices(data, k):
     # import json. It contains 3D bbox values of human as xmin xmax ymin ymax zmin zmax

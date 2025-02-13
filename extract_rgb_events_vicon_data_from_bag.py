@@ -24,8 +24,8 @@ from datetime import datetime
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 #obj = ['human', 'zivid','hupwagen']
-objects = ['MR6D1','MR6D2','MR6D3']
-object_name = 'scene_12'
+objects = ['MR6D5']
+object_name = 'scene_1'
 human = True
 hup = True
 table = False
@@ -65,8 +65,10 @@ for k in num:
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        path = '//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/'
-        bag = rosbag.Bag('//media/eventcamera/Windows/dataset_7_feb/' + object_name + '/' + object_name + '.bag')
+        path = '/media/eventcamera/event_data/' + object_name + '/'
+        bag_all = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/all.bag')
+        bag_event_left = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/left.bag')
+        bag_event_right = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/right.bag')
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
         events_topic_left = '/dvxplorer_left/events'
         events_topic_right = '/dvxplorer_right/events'
@@ -91,12 +93,12 @@ for k in num:
         count = 0
 
         if flag == 1:
-            '''
+
             # mkdir if path does not exist
             if not os.path.exists(path + 'event_cam_left_npy'):
                 os.mkdir(path + 'event_cam_left_npy')
             # Iterate over the bag file and extract the messages
-            for top, msg, tim in bag.read_messages(events_topic_left):
+            for top, msg, tim in bag_event_left.read_messages(events_topic_left):
                 t = msg.header.stamp
                 count = len(msg.events)
                 event_data = np.zeros(count, dtype=[('t', 'float64'), ('x', 'int32'), ('y', 'int32'), ('p', 'int8')])
@@ -118,7 +120,7 @@ for k in num:
             print('saved event cam left npy files')
             if not os.path.exists(path + 'event_cam_right_npy'):
                 os.mkdir(path + 'event_cam_right_npy')
-            for top, msg, tim in bag.read_messages(events_topic_right):
+            for top, msg, tim in bag_event_right.read_messages(events_topic_right):
                 t = msg.header.stamp
                 count = len(msg.events)
                 event_data = np.zeros(count, dtype=[('t', 'float64'), ('x', 'int32'), ('y', 'int32'), ('p', 'int8')])
@@ -137,7 +139,7 @@ for k in num:
             count = 0
             if not os.path.exists(path + '/vicon_data'):
                 os.makedirs(path + '/vicon_data')
-            for top, msg, tim in bag.read_messages(vicon_topic_cam_sys):
+            for top, msg, tim in bag_all.read_messages(vicon_topic_cam_sys):
                 t = msg.header.stamp
                 translation = [
                     msg.transform.translation.x,
@@ -157,8 +159,8 @@ for k in num:
                 json.dump(vicon_data, json_file, indent=2)
             print('saved event cam data')
 
-
-            image_topic = bag.read_messages(rgb_topic)
+            
+            image_topic = bag_all.read_messages(rgb_topic)
             if not os.path.exists(path + '/rgb'):
                 os.makedirs(path + '/rgb')
             if not os.path.exists(path + '/rgb_jpg'):
@@ -177,12 +179,12 @@ for k in num:
             print('Done Extracting RGB images')
 
             flag = 0
-            '''
+
         if not os.path.exists(path + '/vicon_data'):
             os.makedirs(path + '/vicon_data')
         vicon_data = {}
         print('Extracting data for object: ', object, ' with number: ', k)
-        for top, msg, tim in bag.read_messages(vicon_object):
+        for top, msg, tim in bag_all.read_messages(vicon_object):
             t = msg.header.stamp
             translation = [
                 msg.transform.translation.x,
@@ -206,7 +208,7 @@ for k in num:
                 os.makedirs(path + '/vicon_data')
             vicon_data = {}
             print('Extracting data for human with number: ', k)
-            for top, msg, tim in bag.read_messages(vicon_human_object):
+            for top, msg, tim in bag_all.read_messages(vicon_human_object):
                 t = msg.header.stamp
                 translation = [
                     msg.transform.translation.x,
@@ -230,7 +232,7 @@ for k in num:
                 os.makedirs(path + '/vicon_data')
             vicon_data = {}
             print('Extracting data for hupwagen with number: ', k)
-            for top, msg, tim in bag.read_messages(vicon_hupwagen_object):
+            for top, msg, tim in bag_all.read_messages(vicon_hupwagen_object):
                 t = msg.header.stamp
                 translation = [
                     msg.transform.translation.x,
@@ -250,8 +252,9 @@ for k in num:
             print('saved hupwagen data')
 
 
-
-    bag.close()
+    bag_all.close()
+    bag_event_left.close()
+    bag_event_right.close()
     print('Done extracting data')
 
 

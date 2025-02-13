@@ -12,13 +12,13 @@ import torch
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box", 11: "human"
 
-object_name = 'scene_12'
+object_name = 'scene20'
 
 threshold = 10000000
 last = False
 iter = 1
 # list objects such as human, hupwagen, etc
-objects = ['human', 'hupwagen']
+objects = ['human']
 obj_iter = 0
 human = True
 for obj in objects:
@@ -31,8 +31,8 @@ for obj in objects:
     path = root_dir + '/' + object_name
     json_path_camera_sys = root_dir + '/vicon_data/event_cam_sys.json'
     json_path_object = root_dir + '/vicon_data/' + obj + '.json'
-    path_event_cam_left_img = root_dir  + '/event_cam_left/e2calib/'
-    path_event_cam_right_img = root_dir + '/event_cam_right/e2calib/'
+    path_event_cam_left_img = root_dir  + '/event_images/left/'
+    path_event_cam_right_img = root_dir + '/event_images/right/'
     output_dir = root_dir + '/annotation_' + obj + '/'
     output_dir_rgb = output_dir + obj + '_rgb_'
     output_dir_event_cam_left = output_dir + obj + '_ec_left_'
@@ -147,7 +147,7 @@ for obj in objects:
         event_cam_left = path_event_cam_left_img + str(ec_left) + ".png"
         event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
 
-        data_human_bbox = check_human_bbox_data(data_human_bbox, k, previous_t)
+        data_human_bbox,k = check_human_bbox_data(data_human_bbox, k, previous_t)
         vertices = get_humanBBox_vertices(data_human_bbox, k)
         previous_t = k
         points_3d = vertices

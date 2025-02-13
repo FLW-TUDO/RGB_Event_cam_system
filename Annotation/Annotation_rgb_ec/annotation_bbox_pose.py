@@ -11,9 +11,9 @@ import torch
 # 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
 # 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_name = 'scene_12'
+object_name = 'scene_1'
 #obj_name = 'blue_klt'
-objects = ['MR6D4']
+objects = ['MR6D5']
 
 threshold = 10000000
 # import object data from json file
@@ -57,12 +57,12 @@ for obj_name in objects:
     object_len_x = obj_model_data[str(object_id)]['size_x']
     object_len_y = obj_model_data[str(object_id)]['size_y']
     object_len_z = obj_model_data[str(object_id)]['size_z']
-    root_dir = '/media/eventcamera/Windows/dataset_7_feb/'
+    root_dir = '/media/eventcamera/event_data/'
     path = root_dir + object_name + '/' + object_name
     json_path_camera_sys = root_dir + object_name + '/vicon_data/event_cam_sys.json'
     json_path_object = root_dir + object_name + '/vicon_data/' + obj_name + '.json'
-    path_event_cam_left_img = root_dir + object_name + '/event_images/'
-    path_event_cam_right_img = root_dir + object_name + '/event_cam_right/e2calib/'
+    path_event_cam_left_img = root_dir + object_name + '/event_images/left/'
+    path_event_cam_right_img = root_dir + object_name + '/event_images/left/'
     output_dir = root_dir + object_name + '/annotation/'
     output_dir_rgb = root_dir + object_name + '/annotation/rgb_' + obj_name + '_'
     output_dir_event_cam_left = root_dir + object_name + '/annotation/ec_left_' + obj_name + '_'
@@ -209,7 +209,7 @@ for obj_name in objects:
         if len(objects) > 1:
             cv2.imwrite(event_cam_right, img_event_cam_2)
 
-        obj_iter += 1
+
         ########### Display the images ###########
         img_rgb = cv2.resize(img_rgb, (568, 426))
         img_event_cam_1 = cv2.resize(img_event_cam_1, (568, 426))
@@ -222,3 +222,4 @@ for obj_name in objects:
         cv2.waitKey(0)
         count += 1
         cv2.destroyAllWindows()
+    obj_iter += 1
