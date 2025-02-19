@@ -57,7 +57,7 @@ def remove_delayed_timestamps(result_dict, threshold):
         del result_dict[key]
     return result_dict
 
-def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data, H_cam1_2_rgb, H_cam2_cam1, path):
+def save_transformations_human(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data, H_cam1_2_rgb, H_cam2_cam1, path):
     transformations = {}
     for i, v in vicon_data_camera_sys.items():
         if i == str(len(vicon_data_camera_sys) - 1):
@@ -102,7 +102,9 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
 
         # project object (x,y,z) in rgb coordinate to cam1 coordinate
         H_cam1_2_object = np.matmul(H_cam1_2_rgb, H_rgb_2_object)
+        t_cam1_2_object = H_cam1_2_object[:3, 3]
         H_cam2_2_object = np.matmul(H_cam2_cam1, H_cam1_2_object)
+        t_cam2_2_object = H_cam2_2_object[:3, 3]
         H_cam1_2_vicon = np.matmul(H_cam1_2_rgb, H_rgb_2_world)
         H_cam2_2_vicon = np.matmul(H_cam2_cam1, H_cam1_2_vicon)
         transformations[str(vicon_data_camera_sys[str(i)]['timestamp'])] = {'H_rgb_2_vicon': H_rgb_2_world.tolist(),
@@ -116,6 +118,70 @@ def save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_
                                                            'rotation': rotation.tolist(),
                                                            'timestamp': str(v['timestamp'])
                                                            }
+    with open(path + '_transformations.json', 'w') as json_file:
+        json.dump(transformations, json_file, indent=2)
+    print('saved transformations data')
+
+def save_transformations(vicon_2_camera_sys_data, H_cam_sys_2_rgb, vicon_object_data, H_rgb_2_left, H_right_2_rgb, path, H_vicon_to_object_uncalibrated_to_calibrated):
+    transformations = {}
+    for i, v in vicon_2_camera_sys_data.items():
+        # TODO:what does this do
+        #if i == str(len(vicon_2_camera_sys_data) - 1):
+        #    continue
+
+        # H_vicon_2_camera_sys - make homogeneous transformation matrix
+        rot = vicon_2_camera_sys_data[str(i)]['rotation'] # get rotation matrix from quaternion
+        H = np.eye(4)
+        H[:3, :3] = R.from_quat(rot).as_matrix()
+        H[:3, 3] = vicon_2_camera_sys_data[str(i)]['translation']
+        H_vicon_2_camera_sys = H
+
+        # make homogeneous transformation matrix from vicon to rgb optical frame
+        H_world_2_rgb = np.matmul(H_vicon_2_camera_sys, H_cam_sys_2_rgb)
+        #H_world_2_right = np.matmul(H_vicon_2_camera_sys, H_cam_sys_2_right)
+        # H_right_2_world = np.eye(4)
+        #H_right_2_world[:3, :3] = np.transpose(H_world_2_right[:3, :3])
+        #H_right_2_world[:3, 3] = -np.matmul(np.transpose(H_world_2_right[:3, :3]), H_world_2_right[:3, 3])
+
+        # invert
+        H_rgb_2_world = np.eye(4)
+        H_rgb_2_world[:3, :3] = np.transpose(H_world_2_rgb[:3, :3])
+        H_rgb_2_world[:3, 3] = -np.matmul(np.transpose(H_world_2_rgb[:3, :3]), H_world_2_rgb[:3, 3])
+
+        # Sometimes a few msgs from start and end go missing. Hence, we need to check if the timestamp exists in the vicon_object_data
+        if str(v['timestamp']) not in vicon_object_data.keys():
+            print('timestamp not found in vicon_object_data')
+            continue
+        t_x = vicon_object_data[str(v['timestamp'])]['translation'][0]
+        t_y = vicon_object_data[str(v['timestamp'])]['translation'][1]
+        t_z = vicon_object_data[str(v['timestamp'])]['translation'][2]
+        r_x = vicon_object_data[str(v['timestamp'])]['rotation'][0]
+        r_y = vicon_object_data[str(v['timestamp'])]['rotation'][1]
+        r_z = vicon_object_data[str(v['timestamp'])]['rotation'][2]
+        r_w = vicon_object_data[str(v['timestamp'])]['rotation'][3]
+        rotation = R.from_quat([r_x, r_y, r_z, r_w]).as_matrix()
+        # world_2_object are the recorded vicon values for the object
+        H_world_2_object = np.eye(4)
+        H_world_2_object[:3, :3] = rotation
+        H_world_2_object[:3, 3] = [t_x, t_y, t_z]
+
+        # tranform H_world_2_object to correct the vicon centre for object and the geometric centre.
+        H_world_2_object_corrected = np.matmul(H_vicon_to_object_uncalibrated_to_calibrated, H_world_2_object)
+
+        H_rgb_2_object = np.matmul(H_rgb_2_world, H_world_2_object_corrected)
+        #H_right_2_object = np.matmul(H_right_2_world, H_world_2_object)
+
+        # project object (x,y,z) in rgb coordinate to cam1 coordinate
+        H_left_2_object = np.matmul(np.linalg.inv(H_rgb_2_left), H_rgb_2_object)
+        H_right_2_object = np.matmul(H_right_2_rgb, H_rgb_2_object)
+        transformations[str(vicon_2_camera_sys_data[str(i)]['timestamp'])] = {
+            'H_rgb_2_vicon': H_rgb_2_world.tolist(),
+            'H_vicon_2_camera_sys': H_vicon_2_camera_sys.tolist(),
+            'H_rgb_2_object': H_rgb_2_object.tolist(),
+            'H_left_2_object': H_left_2_object.tolist(),
+            'H_right_2_object': H_right_2_object.tolist(),
+            'timestamp': str(v['timestamp'])
+        }
     with open(path + '_transformations.json', 'w') as json_file:
         json.dump(transformations, json_file, indent=2)
     print('saved transformations data')
@@ -186,7 +252,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
         vertices = np.dot(vertices, rotation_matrix)
         points_3d = np.dot(points_3d, rotation_matrix)
-        translation_vector = np.array([0.0, 0, -(object_len_z + 55)/2000])
+        translation_vector = np.array([0.0, 0, -(object_len_z)/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -211,7 +277,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
         points_3d -= translation_vector
 
     if object_id == 8:
-        translation_vector = np.array([0, 0, -(object_len_z + 100) / 2000])
+        translation_vector = np.array([0, 0, -(object_len_z) / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -393,7 +459,6 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
     '''
     img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
-    # cv2 show
     #cv2.imshow('img', cv2.resize(img_temp_cam, (0, 0), fx=0.5, fy=0.5))
     return img_temp_cam
 

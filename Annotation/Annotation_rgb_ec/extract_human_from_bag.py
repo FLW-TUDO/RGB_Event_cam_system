@@ -21,10 +21,10 @@ objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kro
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 obj = ['human_LH','human_RH', 'human_LL', 'human_RL', 'human_head', 'human_waist']
 num = [1]
-objects = [] # list objects other than human. such as table, hupwagen, etc.
+objects = ['hupwagen'] # list objects other than human. such as table, hupwagen, etc.
 flag = 1
 count = 0
-folder_name = 'scene_1'
+folder_name = 'scene_zivid_1'
 vicon_data = {}
 root = '/media/eventcamera/event_data/'
 path = root + folder_name + '/'

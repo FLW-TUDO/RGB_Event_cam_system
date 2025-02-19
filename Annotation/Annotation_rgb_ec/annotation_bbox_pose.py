@@ -8,17 +8,19 @@ import trimesh
 from utilities import *
 import torch
 
-# 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5: "shogun_box",
-# 6: "kronen_bier_crate", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
+# 1: "wooden_pallet", 2: "small_klt", 3: "big_klt", 4: "blue_klt", 5:  "Amazon basics luggage",
+# 	6:  "IKEA_Dammang _bin_with_lid", 7: "brinkhoff_bier_crate", 8: "zivid_cardboard_box", 9: "dell_carboard_box", 10: "ciatronic_carboard_box"
 
-object_name = 'scene_1'
+object_name = 'scene_12'
 #obj_name = 'blue_klt'
-objects = ['MR6D5']
-
+objects = ['MR6D15']
+root_dir = '/media/eventcamera/Windows/dataset_7_feb/'
 threshold = 10000000
+obj_model_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/'
 # import object data from json file
-with open('/home/eventcamera/RGB_Event_cam_system/Annotation/Annotation_rgb_ec/obj_model/models_info.json', 'r') as file:
+with open(obj_model_path + 'models_info.json', 'r') as file:
     obj_model_data = json.load(file)
+
 obj_iter = 0
 for obj_name in objects:
     if obj_name == 'MR6D1':
@@ -51,13 +53,21 @@ for obj_name in objects:
             object_id = 14
     elif obj_name == 'MR6D15':
             object_id = 15
-    elif obj_name == 'MR6DD16':
+    elif obj_name == 'MR6D16':
             object_id = 16
+    '''
+    with open('/media/eventcamera/event_data/dynamic_objects_calibration_diff.json', 'r') as json_file:
+        H_vicon_to_object_uncalibrated_to_calibrated = json.load(json_file)
+    H_vicon_to_object_uncalibrated_to_calibrated = np.array(H_vicon_to_object_uncalibrated_to_calibrated
+                                                            [str(object_id)]['H_vicon_to_object_uncalibrated_to_calibrated'])
+    H_vicon_to_object_uncalibrated_to_calibrated[:3, 3] = H_vicon_to_object_uncalibrated_to_calibrated[:3, 3] / 1000
+    '''
+    H_vicon_to_object_uncalibrated_to_calibrated = np.eye(4)
 
     object_len_x = obj_model_data[str(object_id)]['size_x']
     object_len_y = obj_model_data[str(object_id)]['size_y']
     object_len_z = obj_model_data[str(object_id)]['size_z']
-    root_dir = '/media/eventcamera/event_data/'
+
     path = root_dir + object_name + '/' + object_name
     json_path_camera_sys = root_dir + object_name + '/vicon_data/event_cam_sys.json'
     json_path_object = root_dir + object_name + '/vicon_data/' + obj_name + '.json'
@@ -138,21 +148,23 @@ for obj_name in objects:
     with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'r') as file:
         data = json.load(file)
     # cam1 is event camera left and cam2 is event camera right
-    camera_matrix = np.array(data['camera_matrix'])
-    distortion_coefficients = np.array(data['distortion_coefficients'])
-    camera_mtx_cam2 = np.array(data['camera_mtx_cam2'])
-    distortion_coeffs_cam2 = np.array(data['distortion_coeffs_cam2'])
-    camera_mtx_cam1 = np.array(data['camera_mtx_cam1'])
-    distortion_coeffs_cam1 = np.array(data['distortion_coeffs_cam1'])
-    H_cam_vicon_2_rgb = np.array(data['H_cam_vicon_2_cam_optical'])
-    H_cam1_2_rgb = np.array(data['H_cam1_2_rgb'])
-    H_cam2_cam1 = np.array(data['H_cam2_cam1'])
+    camera_mtx_left = np.array(data['camera_matrix'])
+    distortion_coefficients_left = np.array(data['distortion_coefficients'])
+    camera_mtx_rgb = np.array(data['camera_mtx_cam1'])
+    distortion_coefficients_rgb = np.array(data['distortion_coeffs_cam1'])
+    camera_mtx_right = np.array(data['camera_mtx_cam2'])
+    distortion_coefficients_right = np.array(data['distortion_coeffs_cam2'])
+
+    H_cam_sys_2_rgb = np.array(data['H_cam_sys_2_rgb'])  # got from eye in hand calibration
+    H_rgb_2_left = np.array(data['H_rgb_2_left'])
+    H_right_2_rgb = np.array(data['H_right_2_rgb'])
+   # H_cam_sys_2_right = np.array(data['H_cam_sys_2_right'])
 
     ######### Here we save the transformations for the dataset. Annotations are not happening here. #########
     # Read the vicon coordinates of the event camera system.
     with open(json_path_camera_sys, 'r') as f:
         vicon_data_camera_sys = json.load(f)
-    save_transformations(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_data.copy(), H_cam1_2_rgb, H_cam2_cam1, path)
+    save_transformations(vicon_data_camera_sys, H_cam_sys_2_rgb, vicon_object_data.copy(), H_rgb_2_left, H_right_2_rgb, path, H_vicon_to_object_uncalibrated_to_calibrated)
 
     ################## ANNOTATIONS #################
     count = 0
@@ -175,7 +187,7 @@ for obj_name in objects:
         event_cam_left = path_event_cam_left_img + str(ec_left) + ".png"
         event_cam_right = path_event_cam_right_img + str(ec_right) + ".png"
 
-        ####### Import object ply file and create a mesh for visualization #######1
+        ####### Import object ply file and create a mesh for visualization #######
         obj_geometry = trimesh.load_mesh(obj_path)
         if not isinstance(obj_geometry, trimesh.Trimesh):
             print("The object is not a Trimesh object. It is a", type(obj_geometry))
@@ -189,33 +201,39 @@ for obj_name in objects:
         H_rgb_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_rgb_2_object'])
         # True is given if you want to save the bounding box and pose data of the object.
         img_rgb = project_points_to_image_plane(H_rgb_2_object, k, rgb_t, rgb_img_path, points_3d, vertices,
-                                                        camera_matrix, distortion_coefficients, output_dir_rgb, folder_path, obj_iter, True)
+                                                        camera_mtx_rgb, distortion_coefficients_rgb, output_dir_rgb, folder_path, obj_iter, True)
 
         if len(objects) > 1:
             cv2.imwrite(rgb_img_path, img_rgb)
 
-        ############ Event camera 1 ############
+        ############ Event camera left ############
         event_t = 0
-        H_cam1_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam1_2_object'])
-        img_event_cam_1 = project_points_to_image_plane(H_cam1_2_object, ec_left, event_t, event_cam_left, points_3d, vertices,
-                                                        camera_mtx_cam1, distortion_coeffs_cam1,output_dir_event_cam_left, root_dir, obj_iter, True)
+        H_left_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_left_2_object'])
+        img_event_cam_left = project_points_to_image_plane(H_left_2_object, ec_left, event_t, event_cam_left, points_3d, vertices,
+                                                        camera_mtx_left, distortion_coefficients_left,output_dir_event_cam_left, root_dir, obj_iter, True)
         if len(objects) > 1:
-            cv2.imwrite(event_cam_left, img_event_cam_1)
+            cv2.imwrite(event_cam_left, img_event_cam_left)
 
-        ############ Event camera 2 ############
-        H_cam2_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_cam2_2_object'])
-        img_event_cam_2 = project_points_to_image_plane(H_cam2_2_object, ec_right, event_t, event_cam_right, points_3d, vertices,
-                                                        camera_mtx_cam2, distortion_coeffs_cam2, output_dir_event_cam_right, root_dir, obj_iter, True)
+        ############ Event camera right ############
+        H_right_2_object = np.array(projected_point_rgb_ec1_ec2[str(k)]['H_right_2_object'])
+        # shift the transformation to 1 unit in positive z and 1 unit in negative y
+
+        #H_right_2_object[0][3] = H_right_2_object[0][3] - 0.05
+        #H_right_2_object[1][3] = H_right_2_object[1][3] - 0.05
+        #H_right_2_object[2][3] = H_right_2_object[2][3] + 1.0
+
+        img_event_cam_right = project_points_to_image_plane(H_right_2_object, ec_right, event_t, event_cam_right, points_3d, vertices,
+                                                        camera_mtx_right, distortion_coefficients_right, output_dir_event_cam_right, root_dir, obj_iter, True)
         if len(objects) > 1:
-            cv2.imwrite(event_cam_right, img_event_cam_2)
+            cv2.imwrite(event_cam_right, img_event_cam_right)
 
 
         ########### Display the images ###########
         img_rgb = cv2.resize(img_rgb, (568, 426))
-        img_event_cam_1 = cv2.resize(img_event_cam_1, (568, 426))
-        img_event_cam_2 = cv2.resize(img_event_cam_2, (568, 426))
+        img_event_cam_left = cv2.resize(img_event_cam_left, (568, 426))
+        img_event_cam_right = cv2.resize(img_event_cam_right, (568, 426))
 
-        concatenated_images = np.hstack((img_event_cam_1, img_rgb, img_event_cam_2))
+        concatenated_images = np.hstack((img_event_cam_left, img_rgb, img_event_cam_right))
         output_path = os.path.join(output_dir, f'image_{count:03d}.jpg')
         cv2.imwrite(output_path, concatenated_images)
         #cv2.imshow('Image', concatenated_images)

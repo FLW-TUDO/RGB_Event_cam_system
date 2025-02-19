@@ -24,8 +24,8 @@ from datetime import datetime
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 #obj = ['human', 'zivid','hupwagen']
-objects = ['MR6D5']
-object_name = 'scene_1'
+objects = ['zivid']
+object_name = 'scene_zivid_1'
 human = True
 hup = True
 table = False

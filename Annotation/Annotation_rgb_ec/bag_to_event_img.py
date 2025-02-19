@@ -5,8 +5,8 @@ import cv2
 import threading
 import queue
 
-object_name = 'scene_1'
-bag = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/left.bag')
+object_name = 'scene_zivid_1'
+bag = rosbag.Bag('/media/eventcamera/event_data/' + object_name + '/right.bag')
 path = '/media/eventcamera/event_data/' + object_name + '/'
 
 # Event camera topics
