@@ -6,8 +6,8 @@ from cv_bridge import CvBridge
 import numpy as np
 import os
 
-output_dir = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_21/reconstructed_events/cam0/'
-BAGFILE = '/home/eventcamera/Eventcamera/calibration_data/RGB_stereo_event_oct_21/events_images.bag'
+output_dir = '/media/eventcamera/event_data/calibration/mar_20/cam1/'
+BAGFILE = '/media/eventcamera/event_data/calibration/mar_20/rgb.bag'
 #os.mkdir(output_dir)
 
 # if cam0 not there then create it
@@ -16,7 +16,7 @@ if not os.path.exists(output_dir):
 
 if __name__ == '__main__':
     bag = rosbag.Bag(BAGFILE)
-    TOPIC = '/rgb/image_raw'
+    TOPIC = '/camera/image_raw'
     DESCRIPTION = 'color_'
     image_topic = bag.read_messages(TOPIC)
     i = 0

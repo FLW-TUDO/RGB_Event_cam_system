@@ -30,6 +30,11 @@ def find_closest_elements(A, B):
     result = {}
 
     for a in A:
+        # check if the first element in in A (rgb timestamp) is less than the first element in B (event camera timestamp).
+        # If it is then start from a that is larger than the first element in B
+        if a < B[0] or a>B[-1]:
+            continue
+
         closest_b = min(B, key=lambda x: abs(x - a))
         result[a] = closest_b
         B.remove(closest_b)
@@ -37,12 +42,12 @@ def find_closest_elements(A, B):
     return result
 
 def remove_extension(arr1):
-    modified_arr = [file_name[:-4] for file_name in arr1 if file_name.endswith('.png')]
+    modified_arr = [file_name[:-4] for file_name in arr1 if file_name.endswith('.png') or file_name.endswith('.jpg')]
     return modified_arr
 
 def remove_extension_and_convert_to_int(arr):
     # Remove ".png" extension and convert to integers
-    modified_arr = [int(file_name[:-4]) for file_name in arr if file_name.endswith('.png')]
+    modified_arr = [int(file_name[:-4]) for file_name in arr if file_name.endswith('.png') or file_name.endswith('.jpg')]
     return modified_arr
 
 def remove_delayed_timestamps(result_dict, threshold):
@@ -166,7 +171,7 @@ def save_transformations(vicon_2_camera_sys_data, H_cam_sys_2_rgb, vicon_object_
         H_world_2_object[:3, 3] = [t_x, t_y, t_z]
 
         # tranform H_world_2_object to correct the vicon centre for object and the geometric centre.
-        H_world_2_object_corrected = np.matmul(H_vicon_to_object_uncalibrated_to_calibrated, H_world_2_object)
+        H_world_2_object_corrected = np.matmul(H_world_2_object, H_vicon_to_object_uncalibrated_to_calibrated)
 
         H_rgb_2_object = np.matmul(H_rgb_2_world, H_world_2_object_corrected)
         #H_right_2_object = np.matmul(H_right_2_world, H_world_2_object)
@@ -234,90 +239,85 @@ def compute_cam_2_obj(vicon_data_camera_sys, H_cam_vicon_2_rgb, vicon_object_dat
             return H_cam2_2_object
 
 
-def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z):
+def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z, object_len_x, object_len_y):
     if object_id == 1:
-        rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
-        vertices = np.dot(vertices, rotation_matrix)
-        points_3d = np.dot(points_3d, rotation_matrix)
-        translation_vector = np.array([0, 0, -object_len_z/2000])
+        #rotate the object by 90 degrees
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z/2000 + 0.025])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 2:
-        translation_vector = np.array([0.0, 0, 0.072])
+        translation_vector = np.array([-object_len_x/2000, object_len_y/2000, (object_len_z)/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 3:
-        rotation_matrix = R.from_euler('z', 90, degrees=True).as_matrix()
-        vertices = np.dot(vertices, rotation_matrix)
-        points_3d = np.dot(points_3d, rotation_matrix)
-        translation_vector = np.array([0.0, 0, -(object_len_z)/2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, (object_len_z)/2000 + 0.01])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 4:
-        translation_vector = np.array([0, 0, -object_len_z/2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 5:
-        translation_vector = np.array([0, 0, -object_len_z/2000])
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z / 2000 - 0.04])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 6:
-        translation_vector = np.array([0, 0, -object_len_z/2000])
+        translation_vector = np.array([-object_len_x/2000, 0, object_len_z/2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 7:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 8:
-        translation_vector = np.array([0, 0, -(object_len_z) / 2000])
+        translation_vector = np.array([-object_len_x/2000, object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 9:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 10:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 11:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 12:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([-object_len_x/2000, object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 13:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000 + 0.03, object_len_z / 2000 ])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 14:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([-object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 15:
-        translation_vector = np.array([0, 0, -(object_len_z - 400) / 2000])
+        translation_vector = np.array([object_len_x/2000 + 0.02, object_len_y/2000 + 0.02, -(object_len_z) / 2000 - 0.02])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 16:
-        translation_vector = np.array([0, 0, -object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -333,7 +333,6 @@ def save_bbox_values(output_dir, object_2d_transform_points, timestamp):
     ymin = float(np.min(object_2d_transform_points[:, 1]))
     ymax = float(np.max(object_2d_transform_points[:, 1]))
 
-
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax, zmin, zmax])
     #Bbox = {'timestamp': timestamp, 'xmin': Bbox[1], 'xmax': Bbox[2], 'ymin': Bbox[3], 'ymax': Bbox[4], 'zmin': Bbox[5], zmax: Bbox[6]}
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
@@ -343,7 +342,7 @@ def save_bbox_values(output_dir, object_2d_transform_points, timestamp):
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
-def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, object_2d_vertices, img_cam, time_rgb, root_dir):
+def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_vertices, object_2d_vertices, img_cam, time_rgb, root_dir):
     #################################### Exporting bounding box and pose values to a json file ####################################
     # transform object_3d_transform_points of size (8,1,2) to (8,2)
     object_3d_transform_vertices = object_3d_transform_vertices.reshape(-1, 3)
@@ -355,16 +354,17 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
     zmin = np.min(object_3d_transform_vertices[:, 2])
     zmax = np.max(object_3d_transform_vertices[:, 2])
     # Create a blank mask (same size as image, single channel)
-    time_rgb = 0
+    #time_rgb = 0
     if time_rgb != 0:
         object_mask = np.zeros(img_cam.shape[:2], dtype=np.uint8)
         hull = cv2.convexHull(np.array(object_2d_vertices))
         cv2.fillPoly(object_mask, [hull], 255)
         # create folder to save masks
-        if not os.path.exists(root_dir + "/masks_rgb/"):
-            os.makedirs(root_dir + "/masks_rgb/")
+        save_dir = root_dir + "/masks_rgb_" + object_name + "/"
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
         # Save or display the mask
-        cv2.imwrite(root_dir + "/masks_rgb/mask_" + str(time_rgb) + ".jpg", object_mask)
+        #cv2.imwrite(save_dir + "mask_" + str(time_rgb) + ".png", object_mask)
         # load masks for human
         data = np.load(
             root_dir + '/output_masks_human_img/' + str(time_rgb) + '.npy')
@@ -382,11 +382,10 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
             object_mask = object_mask * (1 - mask_hupwagen)
         # Subtract human mask from object mask
         visible_object_mask = object_mask * (1 - human_mask)  # Remove overlapping region
-
-        # Convert back to 255 scale for saving
-        visible_object_mask = visible_object_mask
+        #save the mask as npy file
+        np.save(save_dir + "mask_" + str(time_rgb) + "_visible_object.npy", visible_object_mask)
         # Save the mask
-        cv2.imwrite(root_dir + "/masks_rgb/mask_" + str(time_rgb) + "_visible_object.jpg", visible_object_mask)
+        cv2.imwrite(save_dir + "mask_" + str(time_rgb) + "_visible_object.png", visible_object_mask)
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
     Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax}
     # append the Bbox values to a json file row wise
@@ -394,7 +393,7 @@ def save_bbox_values_3D(output_dir, timestamp, object_3d_transform_vertices, obj
     with open(file, 'a') as json_file:
         json_file.write(json.dumps(Bbox) + '\n')
 
-def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d, vertices,
+def project_points_to_image_plane(obj_name, H_cam_2_object, k, rgb_t, img_path, points_3d, vertices,
                                   camera_matrix, distortion_coefficients, output_dir, root, obj_iter =0, save = False, human = False):
     #points_2d_cam1 = cv2.projectPoints(np.array([t_cam_2_point]), np.eye(3), np.zeros(3), camera_matrix,
      #                                  distortion_coefficients)
@@ -412,6 +411,8 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     object_3d_transform_vertices = np.matmul(H_cam_2_object, np.vstack((vertices.T, np.ones(vertices.shape[0]))))[
                                    :3, :].T
     center_3d = np.mean(object_3d_transform_points, axis=0)
+    # create 3d bbox using vertices. object_3d_transform_vertices are the 3D vertices of the 3D object
+
 
     # project 3d points to image plane
     object_2d_points, _ = cv2.projectPoints(object_3d_transform_points, np.eye(3), np.zeros(3), camera_matrix,
@@ -426,7 +427,7 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     center_2d = center_2d[0, 0]
     if save:
         save_bbox_values(output_dir, object_2d_vertices, k)
-        save_bbox_values_3D(output_dir, k, object_3d_transform_vertices, object_2d_vertices, img_temp_cam, rgb_t, root)
+        save_bbox_values_3D(obj_name, output_dir, k, object_3d_transform_vertices, object_2d_vertices, img_temp_cam, rgb_t, root)
         save_pose(H_cam_2_object, center_3d, output_dir, k)
 
     # create a mask
@@ -434,7 +435,11 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     for point in object_2d_points:
         mask = cv2.circle(mask, tuple(point[0].astype(int)), 2, (255, 255, 255), -1)
     # fill the mask with the projected points
-    img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
+    #img_temp_cam = cv2.addWeighted(img_temp_cam, 1, mask, 0.3, 0)
+    if rgb_t != 0:
+        line_weight = 2
+    else:
+        line_weight = 1
     if human:
         for i in range(4):
             img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
@@ -443,6 +448,17 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
                                     tuple(object_2d_vertices[(i + 1) % 4 + 4][0].astype(int)), (0, 255, 0), 3)
             img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
                                     tuple(object_2d_vertices[i + 4][0].astype(int)), (0, 255, 0), 3)
+        # draw the 3D bounding box using vertices in vert
+
+    else:
+        for i in range(4):
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                                    tuple(object_2d_vertices[(i + 1) % 4][0].astype(int)), (0, 255, 0), line_weight)
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i + 4][0].astype(int)),
+                                    tuple(object_2d_vertices[(i + 1) % 4 + 4][0].astype(int)), (0, 255, 0), line_weight)
+            img_temp_cam = cv2.line(img_temp_cam, tuple(object_2d_vertices[i][0].astype(int)),
+                                    tuple(object_2d_vertices[i + 4][0].astype(int)), (0, 255, 0), line_weight)
+
 
 
     '''
@@ -458,7 +474,7 @@ def project_points_to_image_plane(H_cam_2_object, k, rgb_t, img_path, points_3d,
     for point in object_2d_vertices:
         img_temp_cam = cv2.circle(img_temp_cam, tuple(point[0].astype(int)), 3, (0, 0, 255), -1)
     '''
-    img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (255, 0, 0), -1)
+    img_temp_cam = cv2.circle(img_temp_cam, tuple(center_2d.astype(int)), 5, (0, 255, 0), -1)
     #cv2.imshow('img', cv2.resize(img_temp_cam, (0, 0), fx=0.5, fy=0.5))
     return img_temp_cam
 
@@ -511,7 +527,7 @@ def check_human_bbox_data(data, k, previous_t):
         print('inconsistent max_z')
     return data,k
 
-def get_humanBBox_vertices(data, k):
+def get_BBox_vertices(data, k):
     # import json. It contains 3D bbox values of human as xmin xmax ymin ymax zmin zmax
 
     # extract xmin xmax ymin ymax zmin zmax for timestamp value = k
@@ -529,3 +545,20 @@ def get_humanBBox_vertices(data, k):
     vertices = vertices / 1000
     return vertices
 
+def get_vertices(vert):
+    xmin, ymin, zmin = np.min(vert, axis=0)
+    xmax, ymax, zmax = np.max(vert, axis=0)
+
+    # Define the 8 vertices of the bounding box
+    vert = np.array([
+        [xmin, ymin, zmin],  # Bottom-left-front
+        [xmax, ymin, zmin],  # Bottom-right-front
+        [xmax, ymax, zmin],  # Top-right-front
+        [xmin, ymax, zmin],  # Top-left-front
+        [xmin, ymin, zmax],  # Bottom-left-back
+        [xmax, ymin, zmax],  # Bottom-right-back
+        [xmax, ymax, zmax],  # Top-right-back
+        [xmin, ymax, zmax]  # Top-left-back
+
+    ])
+    return vert

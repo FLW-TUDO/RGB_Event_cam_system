@@ -9,13 +9,13 @@ import numpy as np
 import os
 import shutil
 folder_name = 'cam0'
-base_path = "/media/eventcamera/event_data/calibration/feb_18/reconstructed_event_images/"
+base_path = "/media/eventcamera/event_data/calibration/mar_20/reconstructed_event_images/"
 path1 = base_path + folder_name + '_orig/'
 arr0 = os.listdir(base_path + "cam1/") # RGB camera
 arr1 = os.listdir(path1) # Event camera
 arr1 = sorted(arr1)
 arr0 = sorted(arr0)
-path_temp = base_path + folder_name +  "_temp/"
+path_temp = base_path + folder_name +  "/"
 threshold = 10000000
 
 if os.path.exists(path_temp):

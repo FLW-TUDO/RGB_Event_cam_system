@@ -13,10 +13,15 @@ from scipy.spatial.transform import Rotation as R
 #############  Define Paths and Parameters #############
 # =============================================================================
 square_size_meter = 0.125
-image_size = (2048, 1536)
+#image_size = (2048, 1536)
+image_size = (1456, 1088)
+# checkerboard size 64 mm 7x10
+# checker_board_size = (8, 5) 0.125 m
 # Third calib is the original calibration as on 20 Aug 2024
-camera_param_path = '/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json'
-data_path = '/home/eventcamera/Eventcamera/vicon_rgb_extrinsic_calibration/sixth_calib/'
+camera_param_path = '/media/eventcamera/event_data/dataset_20_march_zft/camera_params.json'
+#data_path = '/media/eventcamera/event_data/calibration/Extrinsic/fifth_calib/'
+data_path = '/media/eventcamera/event_data/calibration/Extrinsic/fifth_calib'
+#checker_board_size = (6, 9)
 checker_board_size = (8, 5)
 #params = [1860.9939429743338, 1862.40872909852, 917.1768824325476, 679.5399523739977]
 #distortion_coefficients = np.array([-0.07869357, 0.02253124, 0.00171336, 0.00272475])
@@ -53,7 +58,8 @@ for img_id in range(num_of_images):
         # draw and display the corners
         img = cv2.drawChessboardCorners(img, checker_board_size, corners2, ret)
         # draw image resized to fit screen
-        #cv2.imshow('img', cv2.resize(img, (0, 0), fx=0.5, fy=0.5))
+        # show image with title as image number
+        #cv2.imshow('img' + str(img_id), cv2.resize(img, (0, 0), fx=0.5, fy=0.5))
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
         objpoints.append(objp)
@@ -86,28 +92,6 @@ flags = (cv2.CALIB_USE_INTRINSIC_GUESS +
          cv2.CALIB_FIX_K5 + cv2.CALIB_FIX_K6)
 ret, mtx, dist, r, t = cv2.calibrateCamera(objpoints, imgpoints, image_size, mtx_initial, dist_initial, flags=flags)
 
-'''
-R_tar2cam = []
-t_tar2cam = []
-for im_id in range(num_of_images):
-    img_path = os.path.join(images_path, str(im_id) + '.png')
-    img = cv2.imread(img_path)
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(gray, checker_board_size , None)
-    if ret == True:
-        corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        # Find the rotation and translation vectors.
-        # rvecs=[rx, ry, rz] in rad, tvecs=[x, y, z] in m (defined by size_of_chessboard_squares_m)
-        ret, rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
-        # target2cam
-        R_tar2cam.append(cv2.Rodrigues(rvecs)[0])  # rotation vector to rotation matrix
-        t_tar2cam.append(tvecs)
-    else:
-        print('no chessboard corners found:' + im_id)
-
-print('got target2cam')
-'''
 # convert rvecs to 3x3 rotation matrix
 rvecs = [cv2.Rodrigues(rvec)[0] for rvec in r]
 
@@ -121,16 +105,7 @@ t_cam_optical_2_target_vecs = t
 
 R_target_2_cam_optical_vecs = np.array(rvecs)
 t_target_2_cam_optical_vecs = np.array(t)
-'''
-# get inverse of R_target_2_cam_optical
-R_cam_optical_2_target_vecs = []
-t_cam_optical_2_target_vecs = []
-for i in range(len(R_target_2_cam_optical_vecs)):
-    R_cam_optical_2_target_vecs.append(np.transpose(R_target_2_cam_optical_vecs[i]))
-    t_cam_optical_2_target_vecs.append(-np.matmul(np.transpose(R_target_2_cam_optical_vecs[i]), t_target_2_cam_optical_vecs[i]))
-R_target_2_cam_optical_vecs = np.array(R_target_2_cam_optical_vecs)
-t_target_2_cam_optical_vecs = np.array(t_target_2_cam_optical_vecs)
-'''
+
 # read the json file
 with open(json_path, 'r') as f:
     data = json.load(f)
@@ -198,11 +173,11 @@ print('H_viconCam_2_cam_optical = ')
 print(H)
 # append the H_viconCam_2_cam_optical to already existing json file with data, as a dictionary entry
 
-with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'r') as f:
+with open(camera_param_path, 'r') as f:
     read_data = json.load(f)
     read_data['H_cam_sys_2_rgb'] = H.tolist()
     #read_data['H_cam_sys_2_right'] = H.tolist()
 
-with open('/home/eventcamera/RGB_Event_cam_system/Annotation/camera_params.json', 'w') as f:
+with open(camera_param_path, 'w') as f:
     json.dump(read_data, f, indent=2)
 

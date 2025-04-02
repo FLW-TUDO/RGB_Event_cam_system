@@ -18,8 +18,6 @@ import time
 
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import Image
-import subprocess
-import threading
 
 # Initialize ROS node
 rospy.init_node('image_and_vicon_subscriber')
@@ -42,11 +40,11 @@ def vicon_callback(data):
     received_vicon = data
 
 # Subscribers for image and vicon coordinates
-image_subscriber = rospy.Subscriber('/rgb/image_raw', Image, image_callback)
+image_subscriber = rospy.Subscriber('/camera/image_raw', Image, image_callback)
 vicon_subscriber = rospy.Subscriber('/vicon/event_cam_sys/event_cam_sys', TransformStamped, vicon_callback)
 
 # Folder to save images
-save_folder = '/media/eventcamera/event_data/calibration/Extrinsic/second_calib/'
+save_folder = '/media/eventcamera/event_data/calibration/Extrinsic/fifth_calib/'
 os.makedirs(save_folder, exist_ok=True)
 image_dir = os.path.join(save_folder, 'images')
 os.makedirs(image_dir, exist_ok=True)
@@ -54,66 +52,36 @@ json_file_path = os.path.join(save_folder, 'vicon_coordinates.json')
 
 vicon_data = {}
 
-#!/usr/bin/env python3
-counter = 0
-# ===== Function to Record ROSBAG in Background =====
-def record_rosbag():
-    """Start rosbag recording for 5 seconds and stop it gracefully."""
-    timestamp = time.strftime("%Y-%m-%d-%H-%M-%S")
-    global counter
-    bag_name = str(counter) + ".bag"
-    bag_path = os.path.join(save_folder, bag_name)
 
-    print(f"[INFO] Recording for 2 seconds... Saving as {bag_name}")
+# Loop to capture and save image and vicon data on 'Enter' key press
+count = 0
+while not rospy.is_shutdown():
+    key = input("press q to quit. press Enter to capture sample: " + str(count))
+    if key == 'q':
+        break
+    time.sleep(0.1)
+    # Save image to folder
+    image_filename = str(count) + '.png'
+    cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
+    # extract the timestamp from the vicon data and save as nano secs
+    timestamp = received_vicon.header.stamp.secs + received_vicon.header.stamp.nsecs * 1e-9
+    # delete the decimal point and join bothe the strings
+    #timestamp = str(timestamp).replace('.','')
+    # Save vicon coordinates to a JSON file
+    translation = [
+        received_vicon.transform.translation.x,
+        received_vicon.transform.translation.y,
+        received_vicon.transform.translation.z]
+    rotation = [
+        received_vicon.transform.rotation.x,
+        received_vicon.transform.rotation.y,
+        received_vicon.transform.rotation.z,
+        received_vicon.transform.rotation.w,
+        ]
+    vicon_data[count] = {'timestamp': timestamp, 'translation': translation, 'rotation': rotation}
 
-    # Start rosbag recording
-    rosbag_process = subprocess.Popen([
-        "rosbag", "record", "-O", bag_path,
-        "/dvxplorer_right/events", "/dvxplorer_left/events"
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    count += 1
 
-    time.sleep(2)  # Record for 5 seconds
-
-    # Stop rosbag recording gracefully
-    rosbag_process.terminate()  # Sends SIGTERM (graceful stop)
-    rosbag_process.wait()  # Wait for process to finish
-    print(f"[INFO] Recording saved: {bag_name}")
-    counter += 1
-try:
-
-    # Loop to capture and save image and vicon data on 'Enter' key press
-    count = 0
-    while not rospy.is_shutdown():
-        key = input("press q to quit. press Enter to capture sample: " + str(count))
-        if key == 'q':
-            break
-        rosbag_thread = threading.Thread(target=record_rosbag)
-        rosbag_thread.start()
-        time.sleep(0.7)
-        # Save image to folder
-        image_filename = str(count) + '.png'
-        cv2.imwrite(os.path.join(image_dir, image_filename), received_image)
-        # Start recording in a separate thread (non-blocking)
-
-        # extract the timestamp from the vicon data and save as nano secs
-        timestamp = received_vicon.header.stamp.secs + received_vicon.header.stamp.nsecs * 1e-9
-         # Save vicon coordinates to a JSON file
-        translation = [
-            received_vicon.transform.translation.x,
-            received_vicon.transform.translation.y,
-            received_vicon.transform.translation.z]
-        rotation = [
-            received_vicon.transform.rotation.x,
-            received_vicon.transform.rotation.y,
-            received_vicon.transform.rotation.z,
-            received_vicon.transform.rotation.w,
-            ]
-        vicon_data[count] = {'timestamp': timestamp, 'translation': translation, 'rotation': rotation}
-
-        count += 1
-
-except KeyboardInterrupt:
-    print("\n[INFO] Exiting...")
 
 with open(json_file_path, 'w') as json_file:
     json.dump(vicon_data, json_file)

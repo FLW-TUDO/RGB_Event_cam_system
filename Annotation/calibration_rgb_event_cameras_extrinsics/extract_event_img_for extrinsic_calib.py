@@ -4,9 +4,9 @@ import shutil
 import re
 
 # Paths
-json_file_path = "/media/eventcamera/event_data/calibration/Extrinsic/third_calib/vicon_coordinates.json"  # Update with your JSON file path
+json_file_path = "/media/eventcamera/event_data/calibration/Extrinsic/fourth_calib/vicon_coordinates.json"  # Update with your JSON file path
 source_root = "/media/eventcamera/event_data/calibration/Extrinsic/third_calib/e2calib_25/"  # Update with the root containing the 50 folders
-destination_folder = "/media/eventcamera/event_data/calibration/Extrinsic/third_calib/images"  # Folder to save selected images
+destination_folder = "/media/eventcamera/event_data/calibration/Extrinsic/fourth_calib/images"  # Folder to save selected images
 
 # Ensure destination folder exists
 os.makedirs(destination_folder, exist_ok=True)

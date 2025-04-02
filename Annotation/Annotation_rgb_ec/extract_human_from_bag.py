@@ -20,19 +20,19 @@ from dataClass import DataClass
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 obj = ['human_LH','human_RH', 'human_LL', 'human_RL', 'human_head', 'human_waist']
-num = [1]
-objects = ['hupwagen'] # list objects other than human. such as table, hupwagen, etc.
+
+ # list objects other than human. such as table, hupwagen, etc.
 flag = 1
 count = 0
-folder_name = 'scene_zivid_1'
+#folder_name = 'scene12'
 vicon_data = {}
-root = '/media/eventcamera/event_data/'
-path = root + folder_name + '/'
+root = '/media/eventcamera/event_data/dataset_25_march_zft/'
+
+
 
 def get_rotation_hupwagen(timestamp):
     # read json file
-    with open(path + 'vicon_data/hupwagen.json', 'r') as json_file:
-        hupwagen_data = json.load(json_file)
+
     if str(timestamp) not in hupwagen_data.keys():
         timestamp = min(hupwagen_data.keys(), key=lambda x: abs(int(x) - int(str(timestamp))))
     return hupwagen_data[str(timestamp)]['rotation']
@@ -45,16 +45,27 @@ def get_rotation_table(timestamp):
         timestamp = min(table_data.keys(), key=lambda x: abs(int(x) - int(str(timestamp))))
     return table_data[str(timestamp)]['rotation']
 
-for k in num:
+with open(root + "/scene_data.json", "r") as file:
+    scenes_data = json.load(file)
+
+for scene, o in scenes_data.items():
+    path = root + scene + '/'
+    with open(path + 'vicon_data/hupwagen.json', 'r') as json_file:
+        hupwagen_data = json.load(json_file)
+        # if hupwagen_data is empty then set hupwagen flag to False
+        if not hupwagen_data:
+            hupwagen = False
+        else:
+            hupwagen = True
     for object in obj:
 
-        print('Extracting data for object: ', object, ' with number: ', k)
+        print('Extracting data for object: ', object, ' with scene: ', scene)
         object_name = object
 
         # This scripts extracts the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw,
         # /dvxplorer_right/events from the bag file.
         # To extract RGB images, execute extract_rgb_img_from_bag.py Read the bag file
-        bag = rosbag.Bag(root + folder_name + '/all.bag')
+        bag = rosbag.Bag(root + scene + '/all.bag')
 
         # Extract the topics /dvxplorer_left/events, /vicon/event_cam_sys/event_cam_sys, /rgb/image_raw, /dvxplorer_right/events
         # from the bag file
@@ -74,7 +85,7 @@ for k in num:
         if not os.path.exists(path + '/vicon_data'):
             os.makedirs(path + '/vicon_data')
         vicon_data = {}
-        print('Extracting data for object: ', object, ' with number: ', k)
+        print('Extracting data for object: ', object, ' with scene: ',scene)
         for top, msg, tim in bag.read_messages(vicon_object):
             t = msg.header.stamp
             translation = [
@@ -90,7 +101,7 @@ for k in num:
             vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
             # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
 
-        with open(path + 'vicon_data/' + object + '_' + str(k) + '.json', 'w') as json_file:
+        with open(path + 'vicon_data/' + object + '.json', 'w') as json_file:
             json.dump(vicon_data, json_file, indent=2)
         print('saved object data')
         if object == 'human_LH':
@@ -161,7 +172,7 @@ for k in num:
     save_index = []
     count = 0
     entry_flag = True
-    bag = rosbag.Bag(root + folder_name + '/all.bag')
+    bag = rosbag.Bag(root + scene + '/all.bag')
     # define an empty string
     previous_t = ''
 
@@ -199,7 +210,7 @@ for k in num:
                     max_y = msg.markers[i].translation.y
                     rot = get_rot('human_head', t)
                 if msg.markers[i].translation.z > max_z:
-                    max_z = msg.markers[i].translation.z
+                    max_z = msg.markers[i].translation.z + 100
                     rot = get_rot('human_head', t)
                 if msg.markers[i].translation.x < min_x:
                     min_x = msg.markers[i].translation.x
@@ -238,7 +249,7 @@ for k in num:
     min_x = 100000
     min_y = 100000
     min_z = 100000
-    for obj in objects:
+    if hupwagen:
         obj = 'hupwagen'
         for top, msg, tim in bag.read_messages(vicon_object):
 
@@ -284,11 +295,12 @@ for k in num:
 
                 else:
                     print('msg' + str(count) + ' _ ' + str(i), ' is occluded')
-
+                '''
                 if obj == 'hupwagen':
                     rot = get_rotation_hupwagen(t)
                 elif obj == 'table':
                     rot = get_rotation_table(t)
+                '''
             if save_flag:
                 vicon_data[str(t)] = {'min_x': min_x, 'min_y': min_y, 'min_z': min_z, 'max_x': max_x, 'max_y': max_y,
                                       'max_z': max_z, 'timestamp': str(t)}
