@@ -78,17 +78,28 @@ def draw_3d_bbox_on_image(image, bbox, K, color=(0, 255, 0), thickness=2):
 # /media/eventcamera/event_data/dataset_31_march_zft/scene56/annotation_human/human_ec_left_bounding_box_labels_3d.json
 #with open(root + '/annotation_human/human_ec_left_bounding_box_labels_3d.json', 'r') as file:
 #    bbox_3d = [json.loads(line) for line in file]
+cam = 'rgb'
+if cam == 'rgb':
+    with open(root + "/smoothened/human_" + cam + "_bounding_box_labels_3d_smooth.json", 'r') as file:
+        bbox_3d = json.load(file)
+else:
+    with open(root + "/smoothened/human_ec_" + cam + "_bounding_box_labels_3d_smooth.json", "r") as f:
+        bbox_3d = json.load(f)
 
-with open(root + "/smoothened/human_ec_right_bounding_box_labels_3d_smooth.json", "r") as f:
-    bbox_3d = json.load(f)
-
+path = root + '/event_images/' + cam + '/'
 # load camera_params.json
 with open(root + '/camera_params.json', 'r') as file:
     cam_params = json.load(file)
 # Extract camera intrinsic matrix
-K = np.array(cam_params['camera_matrix'])
+if cam == 'left':
+    K = np.array(cam_params['camera_matrix'])
+elif cam == 'right':
+    K = np.array(cam_params['camera_mtx_cam2'])
+elif cam == 'rgb':
+    K = np.array(cam_params['camera_mtx_cam1'])
+    path = root + '/rgb/'
 
-path = root + '/event_images/right/'
+
 files = os.listdir(path)
 # sort the files
 files.sort()
@@ -97,9 +108,11 @@ output_path = root + '/smoothened/'
 # check if the output path exists
 if not os.path.exists(output_path):
     os.makedirs(output_path)
-# delete all the files in the output path
-#for f in os.listdir(output_path):
-#    os.remove(os.path.join(output_path, f))
+
+# delete all jpg or png files in the output path
+for file_name in os.listdir(output_path):
+    if file_name.endswith('.jpg') or file_name.endswith('.png'):
+        os.remove(os.path.join(output_path, file_name))
 
 if not os.path.exists(output_path):
     os.makedirs(output_path)
@@ -109,7 +122,10 @@ for i in bbox_3d:
     # find the bbox with the nearest timestamp in the files
     nearest_timestamp = min(modified_files, key=lambda x: abs(x - i['timestamp']))
     # read the image
-    img = cv2.imread(os.path.join(path, str(nearest_timestamp) + '.png'))
+    if cam == 'rgb':
+        img = cv2.imread(os.path.join(path, str(nearest_timestamp) + '.jpg'))
+    else:
+        img = cv2.imread(os.path.join(path, str(nearest_timestamp) + '.png'))
 
     image_with_box = draw_3d_bbox_on_image(img, i, K)
     image_with_box = draw_point(image_with_box, count, K)

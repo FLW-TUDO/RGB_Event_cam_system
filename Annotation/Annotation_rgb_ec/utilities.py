@@ -353,6 +353,11 @@ def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_
     ymax = float(np.max(object_3d_transform_vertices[:, 1]))
     zmin = np.min(object_3d_transform_vertices[:, 2])
     zmax = np.max(object_3d_transform_vertices[:, 2])
+    status = 'good'
+    if xmax - xmin > 1.55 or xmax - xmin < 0.30 or ymax - ymin > 1.9 or ymax - ymin < 0.40 or zmax - zmin > 1.5 or zmax - zmin < 0.15:
+        print('bbox size is too large', xmax - xmin, ymax - ymin, zmax - zmin)
+        status = 'bad'
+
     # Create a blank mask (same size as image, single channel)
     #time_rgb = 0
     # create masks only for visible part of the objects for rgb images
@@ -388,7 +393,7 @@ def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_
         # Save the mask
         cv2.imwrite(save_dir + "mask_" + str(time_rgb) + "_visible_object.jpg", visible_object_mask)
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
-    Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax}
+    Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax, 'status': status}
     # append the Bbox values to a json file row wise
     file = output_dir + "bounding_box_labels_3d.json"
     with open(file, 'a') as json_file:

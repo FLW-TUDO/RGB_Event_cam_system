@@ -3,8 +3,7 @@ import json
 
 import numpy as np
 import json
-
-import json
+import copy
 
 def apply_simple_threshold_filter(data, pose, threshold=0.5):
     smoothed_data = []
@@ -53,6 +52,7 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
     smoothed_data.append(prev_bbox)
 
     for i in range(1, len(data)):
+
         current_bbox = data[i]
         smoothed_bbox = {}
         timestamp_bbox = current_bbox["timestamp"]
@@ -72,7 +72,7 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
         for coord in ["xmin", "xmax"]:
             # Check if the current coordinate is an outlier compared to the previous one
             if abs(X - current_bbox[coord]) > 0.6 or abs(X - current_bbox[coord]) <  0.6:
-                temp_bbox = data[i]
+                temp_bbox = copy.deepcopy(data[i])
                 temp_bbox["xmin"] = X - 0.3
                 temp_bbox["xmax"] = X + 0.70
                 smoothed_bbox[coord] = temp_bbox[coord]
@@ -99,6 +99,14 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
 
         # Add the timestamp from the current frame
         smoothed_bbox["timestamp"] = current_bbox["timestamp"]
+        # if the original bboxes are good then keep the original values
+        if data[i]['status'] == 'good':
+            smoothed_bbox["xmin"] = current_bbox["xmin"]
+            smoothed_bbox["xmax"] = current_bbox["xmax"]
+            smoothed_bbox["ymin"] = current_bbox["ymin"]
+            smoothed_bbox["ymax"] = current_bbox["ymax"]
+            smoothed_bbox["zmin"] = current_bbox["zmin"]
+            smoothed_bbox["zmax"] = current_bbox["zmax"]
 
         # Add the smoothed bbox to the list
         smoothed_data.append(smoothed_bbox)
@@ -161,15 +169,18 @@ for i in range(len(bbox_3d_data_right)):
 
 smoothed_bboxes_left = apply_separate_threshold_filter(bbox_3d_data_left, bbox_seg, 'left', threshold=1)
 smoothed_bboxes_right = apply_separate_threshold_filter(bbox_3d_data_right, bbox_seg, 'right',  threshold=1)
-
+smoothed_bboxes_rgb = apply_separate_threshold_filter(bbox_3d_data_rgb, bbox_seg, 'rgb', threshold=1)
 
 output_path_left = root + '/smoothened/human_ec_left_bounding_box_labels_3d_smooth.json'
 output_path_right = root + '/smoothened/human_ec_right_bounding_box_labels_3d_smooth.json'
+output_path_rgb = root + '/smoothened/human_rgb_bounding_box_labels_3d_smooth.json'
 # Save to JSON
 with open(output_path_left, "w") as f:
     json.dump(smoothed_bboxes_left, f, indent=2)
 with open(output_path_right, "w") as f:
     json.dump(smoothed_bboxes_right, f, indent=2)
+with open(output_path_rgb, "w") as f:
+    json.dump(smoothed_bboxes_rgb, f, indent=2)
 
 print("✅ Smoothed + filtered bboxes saved to filtered_bboxes.json")
 
