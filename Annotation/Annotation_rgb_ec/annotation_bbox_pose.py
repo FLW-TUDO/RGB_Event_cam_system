@@ -15,7 +15,7 @@ import torch
 
 object_name = 'scene90'
 #obj_name = 'blue_klt'
-objects = ['MR6D5','MR6D11']
+objects = ['MR6D11','MR6D5']
 root_dir = '/media/eventcamera/event_data/dataset_25_march_zft/'
 calib_obj_centre_vicon_geometric = False
 threshold = 10000000
@@ -29,6 +29,7 @@ with open(root_dir + "scene_data.json", "r") as file:
 obj_iter = 0
 #for scenes,o in scenes_data.items():
 for obj_name in objects:
+
     if obj_name == 'MR6D1':
          object_id = 1
     elif obj_name == 'MR6D2':
@@ -134,10 +135,12 @@ for obj_name in objects:
     dict_rgb_ec_left = find_closest_elements(rgb_timestamp, event_cam_left_timestamp)
     dict_rgb_ec_right = find_closest_elements(rgb_timestamp, event_cam_right_timestamp)
     # save the dict_rgb_ec_left and dict_rgb_ec_right to a json file
+    '''
     with open(path + '_closest_ec_left.json', 'w') as file:
         json.dump(dict_rgb_ec_left, file)
     with open(path + '_closest_ec_right.json', 'w') as file:
         json.dump(dict_rgb_ec_right, file)
+    '''
     # remove delayed timestamps. There could be timestamps which are further apart than the expected time difference between the images.
     #dict_rgb_ec_left = remove_delayed_timestamps(dict_rgb_ec_left, threshold)
     #dict_rgb_ec_right = remove_delayed_timestamps(dict_rgb_ec_right, threshold)
@@ -192,7 +195,7 @@ for obj_name in objects:
         # kr and k are timestamps for respective values
         print('timestamp ', k , 'obj_name', obj_name, ' object ', count)
         '''
-        if count<4380:
+        if count>1028:
             count += 1
             continue
         '''
@@ -261,3 +264,38 @@ for obj_name in objects:
         count += 1
         cv2.destroyAllWindows()
     obj_iter += 1
+'''
+rgb_timestamp = os.listdir(root_dir + object_name + '/rgb/')
+rgb_timestamp.sort()
+number_of_objects = len(objects)
+
+if number_of_objects > 1:
+    for obj in objects:
+        # subtract the maks of all other objects from the mask of the current object
+        # get the mask of the object
+        mask_dir = os.listdir(root_dir + object_name + '/masks_rgb_' + obj + '/')
+        mask_dir.sort()
+        # remove all png files from mask_dir
+        mask_dir = [x for x in mask_dir if x.endswith(".npy")]
+        # get the mask of the other objects
+        other_objects = [x for x in objects if x != obj]
+        for other_obj in other_objects:
+            mask_dir_other = os.listdir(root_dir + object_name + '/masks_rgb_' + other_obj + '/')
+            mask_dir_other.sort()
+            mask_dir_other = [x for x in mask_dir_other if x.endswith(".npy")]
+            for i in mask_dir:
+                mask_other = np.load(root_dir + object_name + '/masks_rgb_' + other_obj + '/' + i)
+                mask = np.load(root_dir + object_name + '/masks_rgb_' + obj + '/' + i)
+                # change mask_other to 0 and 1 instead of 0 and 255
+                mask_other = mask_other / 255
+                mask = mask * (1 - mask_other)
+                np.save(root_dir + object_name + '/masks_rgb_' + obj + '/' + i, mask)
+                # remove .npy extension from i and add.jpy extension
+                i = i[:-4] + '.jpg'
+                cv2.imwrite(root_dir + object_name + '/masks_rgb_' + obj + '/' + i, mask)
+
+
+
+    #get_masks_visible_object(objects, root_dir, object_name)
+
+'''

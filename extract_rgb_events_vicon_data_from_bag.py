@@ -20,7 +20,7 @@ from sensor_msgs.msg import Image
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
-sRGB = False
+sRGB = True
 objects_list = ['pallet', 'small_klt', 'big_klt', 'blue_klt', 'shogun_box', 'kronen_bier_crate', 'brinkhoff_bier_crate',
                 'zivid_cardboard_box', 'dell_carboard_box', 'ciatronic_carboard_box', 'human', ' hupfwagon', 'mobile_robot']
 #obj = ['human', 'zivid','hupwagen']

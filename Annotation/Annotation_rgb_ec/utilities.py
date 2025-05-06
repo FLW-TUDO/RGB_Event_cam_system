@@ -247,17 +247,17 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z, 
         points_3d -= translation_vector
 
     if object_id == 2:
-        translation_vector = np.array([-object_len_x/2000, object_len_y/2000, (object_len_z)/2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, (object_len_z)/2000 + 0.04])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 3:
-        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, (object_len_z)/2000 + 0.01])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, (object_len_z)/2000 + 0.025])
         vertices -= translation_vector
         points_3d -= translation_vector
 
     if object_id == 4:
-        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z/2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z/2000 + 0.04])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -292,7 +292,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z, 
         points_3d -= translation_vector
 
     if object_id == 11:
-        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, object_len_y/2000, object_len_z / 2000 + 0.02])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -307,7 +307,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z, 
         points_3d -= translation_vector
 
     if object_id == 14:
-        translation_vector = np.array([-object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
+        translation_vector = np.array([-object_len_x/2000, -object_len_y/2000, object_len_z / 2000 + 0.015])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -317,7 +317,7 @@ def get_translated_points_vertice(object_id, vertices, points_3d, object_len_z, 
         points_3d -= translation_vector
 
     if object_id == 16:
-        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z / 2000])
+        translation_vector = np.array([object_len_x/2000, -object_len_y/2000, object_len_z / 2000 + 0.02])
         vertices -= translation_vector
         points_3d -= translation_vector
 
@@ -355,6 +355,7 @@ def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_
     zmax = np.max(object_3d_transform_vertices[:, 2])
     # Create a blank mask (same size as image, single channel)
     #time_rgb = 0
+    # create masks only for visible part of the objects for rgb images
     if time_rgb != 0:
         object_mask = np.zeros(img_cam.shape[:2], dtype=np.uint8)
         hull = cv2.convexHull(np.array(object_2d_vertices))
@@ -385,7 +386,7 @@ def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_
         #save the mask as npy file
         np.save(save_dir + "mask_" + str(time_rgb) + "_visible_object.npy", visible_object_mask)
         # Save the mask
-        cv2.imwrite(save_dir + "mask_" + str(time_rgb) + "_visible_object.png", visible_object_mask)
+        cv2.imwrite(save_dir + "mask_" + str(time_rgb) + "_visible_object.jpg", visible_object_mask)
     #Bbox = np.array([timestamp, xmin, xmax, ymin, ymax])
     Bbox = {'timestamp': timestamp, 'xmin': xmin, 'xmax': xmax, 'ymin': ymin, 'ymax': ymax, 'zmin': zmin, 'zmax': zmax}
     # append the Bbox values to a json file row wise

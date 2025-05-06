@@ -21,7 +21,7 @@ iter = 1
 objects = ['human','hupwagen']
 obj_iter = 0
 human = True
-base_dir = "/media/eventcamera/event_data/dataset_25_march_zft/"
+base_dir = "/media/eventcamera/event_data/dataset_31_march_zft/"
 with open(base_dir + "scene_data.json", "r") as file:
     scenes_data = json.load(file)
 
@@ -48,11 +48,11 @@ for scene, o in scenes_data.items():
         # if any of the above paths does not exist, create the path
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        ''''
+
         for filename in os.listdir(output_dir):
                 file_path = os.path.join(output_dir, filename)
                 os.unlink(file_path)
-        '''
+
         # extract the time stamps from the images from all 3 cameras
         rgb_timestamp = os.listdir(rgb_image_path)
         rgb_timestamp.sort()

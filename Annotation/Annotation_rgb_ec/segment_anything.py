@@ -43,13 +43,13 @@ else:
     device = torch.device("cpu")
 print(f"using device: {device}")
 
-with open("/media/eventcamera/event_data/dataset_31_march_zft/scene_data.json", "r") as file:
+with open("/media/eventcamera/event_data/dataset_8_apr_zft/scene_data.json", "r") as file:
     scenes_data = json.load(file)
 objects = ['human','hupwagen']
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
 for scenes,o in scenes_data.items():
     print('scene:', scenes)
-    root_dir = '/media/eventcamera/event_data/dataset_31_march_zft/' + scenes + '/'
+    root_dir = '/media/eventcamera/event_data/dataset_8_apr_zft/' + scenes + '/'
     video_dir = root_dir + "rgb"
 
 
