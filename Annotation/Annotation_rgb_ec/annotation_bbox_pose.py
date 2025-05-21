@@ -13,10 +13,10 @@ import torch
 # 	11: "IKEA KNALLIG wooden box", 12: "IKEA MOPPE mini drawer", 13: "IKEA LABBSAL basket", 14: "IKEA IVAR box on wheels", 15: "IKEA SKUBB storage case",
 # 	16: "IKEA SAMLA transparent box"
 
-object_name = 'scene56'
+object_name = 'scene53'
 #obj_name = 'blue_klt'
-objects = ['MR6D11','MR6D5']
-root_dir = '/media/eventcamera/event_data/dataset_31_march_zft/'
+objects = ['MR6D14']
+root_dir = '/media/eventcamera/event_data/dataset_20_march_zft/'
 calib_obj_centre_vicon_geometric = False
 threshold = 10000000
 

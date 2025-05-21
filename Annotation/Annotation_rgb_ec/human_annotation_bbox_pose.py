@@ -21,7 +21,7 @@ iter = 1
 objects = ['human','hupwagen']
 obj_iter = 0
 human = True
-base_dir = "/media/eventcamera/event_data/dataset_31_march_zft/"
+base_dir = "/media/eventcamera/event_data/dataset_8_apr_zft/"
 with open(base_dir + "scene_data.json", "r") as file:
     scenes_data = json.load(file)
 

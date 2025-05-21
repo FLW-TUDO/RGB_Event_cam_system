@@ -32,7 +32,7 @@ table = False
 num = [1]
 flag = 1
 rgb_topic = '/camera/image_raw'
-root = '/media/eventcamera/event_data/dataset_25_march_zft/'
+root = '/mnt/smbshare/'
 with open(root + "scene_data.json", "r") as file:
     scenes_data = json.load(file)
 
@@ -160,7 +160,9 @@ for scene, objects in scenes_data.items():
                 vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
                 #vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
                 count += 1
-
+            # if the file exists, delete it
+            if os.path.exists(path + '/vicon_data/event_cam_sys.json'):
+                os.remove(path + '/vicon_data/event_cam_sys.json')
             with open(path + '/vicon_data/event_cam_sys.json', 'w') as json_file:
                 json.dump(vicon_data, json_file, indent=2)
             print('saved event cam data', object, 'scene', scene)
@@ -203,7 +205,9 @@ for scene, objects in scenes_data.items():
                     # save t, translation and rotation to a json file
                     vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
                     # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
-
+                # if the file exists, delete it
+                if os.path.exists(path + '/vicon_data/human.json'):
+                    os.remove(path + '/vicon_data/human.json')
                 with open(path + 'vicon_data/' + 'human.json', 'w') as json_file:
                     json.dump(vicon_data, json_file, indent=2)
                 print('saved human data', object, 'scene', scene)
@@ -227,6 +231,9 @@ for scene, objects in scenes_data.items():
                     # save t, translation and rotation to a json file
                     vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
                     # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
+                # if the file exists, delete it
+                if os.path.exists(path + '/vicon_data/hupwagen.json'):
+                    os.remove(path + '/vicon_data/hupwagen.json')
 
                 with open(path + 'vicon_data/' + 'hupwagen.json', 'w') as json_file:
                     json.dump(vicon_data, json_file, indent=2)
@@ -252,6 +259,9 @@ for scene, objects in scenes_data.items():
             # save t, translation and rotation to a json file
             vicon_data[str(t)] = {'translation': translation, 'rotation': rotation, 'timestamp': str(t)}
             # vicon_data[str(t)] = {'translation': translation, 'rotation': rotation}
+        # if the file exists, delete it
+        if os.path.exists(path + '/vicon_data/' + object + '.json'):
+            os.remove(path + '/vicon_data/' + object + '.json')
 
         with open(path + 'vicon_data/' + object + '.json', 'w') as json_file:
             json.dump(vicon_data, json_file, indent=2)

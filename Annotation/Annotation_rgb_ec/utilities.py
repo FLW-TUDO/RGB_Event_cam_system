@@ -354,9 +354,14 @@ def save_bbox_values_3D(object_name, output_dir, timestamp, object_3d_transform_
     zmin = np.min(object_3d_transform_vertices[:, 2])
     zmax = np.max(object_3d_transform_vertices[:, 2])
     status = 'good'
-    if xmax - xmin > 1.55 or xmax - xmin < 0.30 or ymax - ymin > 1.9 or ymax - ymin < 0.40 or zmax - zmin > 1.5 or zmax - zmin < 0.15:
-        print('bbox size is too large', xmax - xmin, ymax - ymin, zmax - zmin)
-        status = 'bad'
+
+    # check if the bbox is too large or too small
+    # x axis is the horizontal, y is the height of the human and z is the depth. Here the y threshold is 2.0 for taller human and 1.9 for shorter human
+    # z for taller is 1.6 and shorter is 1.5
+    if object_name == 'human':
+        if xmax - xmin > 1.55 or xmax - xmin < 0.30 or ymax - ymin > 1.9 or ymax - ymin < 0.40 or zmax - zmin > 1.5 or zmax - zmin < 0.15:
+            print('bbox size is too large', xmax - xmin, ymax - ymin, zmax - zmin)
+            status = 'bad'
 
     # Create a blank mask (same size as image, single channel)
     #time_rgb = 0

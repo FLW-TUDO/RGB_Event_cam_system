@@ -43,13 +43,13 @@ else:
     device = torch.device("cpu")
 print(f"using device: {device}")
 
-with open("/media/eventcamera/event_data/dataset_8_apr_zft/scene_data.json", "r") as file:
+with open("/mnt/smbshare/scene_data.json", "r") as file:
     scenes_data = json.load(file)
 objects = ['human','hupwagen']
 # `video_dir` a directory of JPEG frames with filenames like `<frame_index>.jpg`
 for scenes,o in scenes_data.items():
     print('scene:', scenes)
-    root_dir = '/media/eventcamera/event_data/dataset_8_apr_zft/' + scenes + '/'
+    root_dir = '/mnt/smbshare/' + scenes + '/'
     video_dir = root_dir + "rgb"
 
 
@@ -148,7 +148,7 @@ for scenes,o in scenes_data.items():
     first_iter = True
     for obj in objects:
 
-        # if root_dir + 'annotation_' + obj + '/' directoy is empty, skip the object and deete the directory
+        # if root_dir + 'annotation_' + obj + '/' directoy is empty, skip the object and delete the directory
         if not os.listdir(root_dir + 'annotation_' + obj + '/'):
             os.rmdir(root_dir + 'annotation_' + obj + '/')
             continue
@@ -192,8 +192,9 @@ for scenes,o in scenes_data.items():
         ann_obj_id = 4  # give a unique id to each object we interact with (it can be any integers)
 
         # Let's add a box at (x_min, y_min, x_max, y_max) = (300, 0, 500, 400) to get started
-        #box = np.array([148, 135, 232, 232.0], dtype=np.float32)
+        #box = np.array([1083, 183, 1220, 556], dtype=np.float32)
         box = np.array([first_frame['xmin'], first_frame['ymin'], first_frame['xmax'], first_frame['ymax']], dtype=np.float32)
+        print('box:', box)
         _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
             inference_state=inference_state,
             frame_idx=ann_frame_idx,

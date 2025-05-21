@@ -8,9 +8,9 @@ import queue
 import threading
 
 # Root directory where dataset is stored
-root = "/media/eventcamera/event_data/dataset_25_march_zft/"
-start_scene = 90
-end_scene = 91
+root = "/mnt/smbshare/"
+start_scene = 52
+end_scene = 53
 # Event camera topics
 event_topics = {
     "left": "/dvxplorer_left/events",

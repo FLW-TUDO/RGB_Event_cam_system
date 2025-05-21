@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 
-root = "/media/eventcamera/event_data/dataset_31_march_zft/scene56/"
+root = "/media/eventcamera/event_data/dataset_25_march_zft/scene75/"
 # Directory containing .npy files
 input_dir = root + "output_masks_human_img/"
 output_json = root + "output_masks_human_img/bounding_boxes.json"

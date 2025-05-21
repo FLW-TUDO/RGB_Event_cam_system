@@ -4,6 +4,9 @@ import json
 import numpy as np
 import json
 import copy
+import os
+
+root = '/media/eventcamera/event_data/dataset_25_march_zft/scene75'
 
 def apply_simple_threshold_filter(data, pose, threshold=0.5):
     smoothed_data = []
@@ -44,7 +47,7 @@ def apply_simple_threshold_filter(data, pose, threshold=0.5):
         prev_bbox = smoothed_bbox
     return smoothed_data
 
-def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5):
+def apply_separate_threshold_filter(data, bounding_boxes, pose, camera, threshold=0.5):
     smoothed_data = []
 
     # Initialize the previous bbox to be the first frame
@@ -55,6 +58,7 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
 
         current_bbox = data[i]
         smoothed_bbox = {}
+
         timestamp_bbox = current_bbox["timestamp"]
         if camera == 'left':
             X = bounding_boxes[i]['X_left']
@@ -107,6 +111,11 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
             smoothed_bbox["ymax"] = current_bbox["ymax"]
             smoothed_bbox["zmin"] = current_bbox["zmin"]
             smoothed_bbox["zmax"] = current_bbox["zmax"]
+        # get 6D pose from the bounding box. 3 for translation and 3 Euler angles for rotation
+        # Do for pose
+        pose[i][1][0] = smoothed_bbox["xmin"] + (smoothed_bbox["xmax"] - smoothed_bbox["xmin"]) / 2
+        pose[i][1][1] = smoothed_bbox["ymin"] + (smoothed_bbox["ymax"] - smoothed_bbox["ymin"]) / 2
+        pose[i][1][2] = smoothed_bbox["zmin"] + (smoothed_bbox["zmax"] - smoothed_bbox["zmin"]) / 2
 
         # Add the smoothed bbox to the list
         smoothed_data.append(smoothed_bbox)
@@ -114,7 +123,7 @@ def apply_separate_threshold_filter(data, bounding_boxes, camera, threshold=0.5)
         # Update the previous bbox for the next iteration
         prev_bbox = smoothed_bbox
 
-    return smoothed_data
+    return smoothed_data, pose
 
 def check_pose(pose):
     for i in range(1, len(pose)):
@@ -134,7 +143,7 @@ def check_bbox(bbox):
 
     return bbox
 
-root = '/media/eventcamera/event_data/dataset_31_march_zft/scene56'
+
 # bbox_3d_data contains the 3D bounsing boxes which are converted from 2D bouncing boxes in rgb using script mask to bbox
 with open(
         root + '/annotation_human/human_ec_left_bounding_box_labels_3d.json',
@@ -157,6 +166,16 @@ t_rgb = [entry['timestamp'] for entry in bbox_3d_data_rgb[:]]
 with open(root + '/output_masks_human_img/bounding_boxes.json', 'r') as file:
     bounding_boxes_seg = json.load(file)
 t_bbox_seg = [entry['timestamp'] for entry in bounding_boxes_seg[:]]
+
+with open(root + '/annotation_human/human_ec_left__pose.json', 'r') as file:
+    pose_left = [json.loads(line) for line in file]
+
+with open(root + '/annotation_human/human_ec_right__pose.json', 'r') as file:
+    pose_right = [json.loads(line) for line in file]
+
+with open(root + '/annotation_human/human_rgb__pose.json', 'r') as file:
+    pose_rgb = [json.loads(line) for line in file]
+
 bbox_seg = []
 
 #bounding_boxes = check_bbox(bounding_boxes)
@@ -167,13 +186,20 @@ for i in range(len(bbox_3d_data_right)):
     bbox_seg.append(bounding_boxes_seg[t_bbox_seg.index(nearest_timestamp)])
 
 
-smoothed_bboxes_left = apply_separate_threshold_filter(bbox_3d_data_left, bbox_seg, 'left', threshold=1)
-smoothed_bboxes_right = apply_separate_threshold_filter(bbox_3d_data_right, bbox_seg, 'right',  threshold=1)
-smoothed_bboxes_rgb = apply_separate_threshold_filter(bbox_3d_data_rgb, bbox_seg, 'rgb', threshold=1)
+smoothed_bboxes_left, pose_l = apply_separate_threshold_filter(bbox_3d_data_left, bbox_seg, pose_left, 'left', threshold=1)
+smoothed_bboxes_right, pose_r = apply_separate_threshold_filter(bbox_3d_data_right, bbox_seg, pose_right, 'right',  threshold=1)
+smoothed_bboxes_rgb, pose_rgb = apply_separate_threshold_filter(bbox_3d_data_rgb, bbox_seg, pose_rgb, 'rgb', threshold=1)
+
+if not os.path.exists(root + '/smoothened/'):
+    os.makedirs(root + '/smoothened/')
 
 output_path_left = root + '/smoothened/human_ec_left_bounding_box_labels_3d_smooth.json'
 output_path_right = root + '/smoothened/human_ec_right_bounding_box_labels_3d_smooth.json'
 output_path_rgb = root + '/smoothened/human_rgb_bounding_box_labels_3d_smooth.json'
+output_path_pose_left = root + '/smoothened/human_ec_left__pose_smooth.json'
+output_path_pose_right = root + '/smoothened/human_ec_right__pose_smooth.json'
+output_path_pose_rgb = root + '/smoothened/human_rgb__pose_smooth.json'
+
 # Save to JSON
 with open(output_path_left, "w") as f:
     json.dump(smoothed_bboxes_left, f, indent=2)
@@ -181,6 +207,12 @@ with open(output_path_right, "w") as f:
     json.dump(smoothed_bboxes_right, f, indent=2)
 with open(output_path_rgb, "w") as f:
     json.dump(smoothed_bboxes_rgb, f, indent=2)
+with open(output_path_pose_left, "w") as f:
+    json.dump(pose_l, f, indent=2)
+with open(output_path_pose_right, "w") as f:
+    json.dump(pose_r, f, indent=2)
+with open(output_path_pose_rgb, "w") as f:
+    json.dump(pose_rgb, f, indent=2)
 
 print("✅ Smoothed + filtered bboxes saved to filtered_bboxes.json")
 

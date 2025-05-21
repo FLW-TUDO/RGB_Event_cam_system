@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 import cv2
 
-root = '/media/eventcamera/event_data/dataset_31_march_zft/scene56'
+root = '/mnt/smbshare/scene73'
 with open(root + '/output_masks_human_img/bounding_boxes.json', 'r') as file:
     bounding_boxes = json.load(file)
 
@@ -78,7 +78,11 @@ def draw_3d_bbox_on_image(image, bbox, K, color=(0, 255, 0), thickness=2):
 # /media/eventcamera/event_data/dataset_31_march_zft/scene56/annotation_human/human_ec_left_bounding_box_labels_3d.json
 #with open(root + '/annotation_human/human_ec_left_bounding_box_labels_3d.json', 'r') as file:
 #    bbox_3d = [json.loads(line) for line in file]
-cam = 'rgb'
+cam = 'left'
+output_path = root + '/smoothened/'
+# check if the output path exists
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
 if cam == 'rgb':
     with open(root + "/smoothened/human_" + cam + "_bounding_box_labels_3d_smooth.json", 'r') as file:
         bbox_3d = json.load(file)
@@ -104,10 +108,7 @@ files = os.listdir(path)
 # sort the files
 files.sort()
 modified_files = [int(file_name[:-4]) for file_name in files if file_name.endswith('.png') or file_name.endswith('.jpg')]
-output_path = root + '/smoothened/'
-# check if the output path exists
-if not os.path.exists(output_path):
-    os.makedirs(output_path)
+
 
 # delete all jpg or png files in the output path
 for file_name in os.listdir(output_path):

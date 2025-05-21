@@ -26,7 +26,7 @@ flag = 1
 count = 0
 #folder_name = 'scene12'
 vicon_data = {}
-root = '/media/eventcamera/event_data/dataset_31_march_zft/'
+root = '/media/eventcamera/event_data/dataset_25_march_zft/'
 
 
 
@@ -316,7 +316,7 @@ for scene, o in scenes_data.items():
                     rot = get_rotation_table(t)
                 '''
             if save_flag:
-                vicon_data[str(t)] = {'min_x': min_x, 'min_y': min_y, 'min_z': min_z, 'max_x': max_x, 'max_y': max_y,
+                vicon_data[str(t)] = {'min_x': min_x, 'min_y': min_y, 'min_z': 0.1, 'max_x': max_x, 'max_y': max_y,
                                       'max_z': max_z, 'timestamp': str(t)}
 
                 with open(path + '/vicon_data/' + obj + '_bbox.json', 'w') as json_file:
