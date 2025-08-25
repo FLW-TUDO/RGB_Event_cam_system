@@ -49,15 +49,19 @@ for entry in data:
     x_coord_right = []
     y_coord_right = []
     z = entry["zmax"]
+    # get the 2D bbox values in RGB frame
     coordinate_bbox = [(xmin,ymin), (xmin,ymax), (xmax,ymin), (xmax,ymax)]
     # convert all the pixel coordinate_bbox to camera coordinates
     for coord in coordinate_bbox:
         x_pixel = coord[0]
         y_pixel = coord[1]
+        # Convert from pixel to camera coordinates
         X, Y, Z = pixel_to_camera(x_pixel, y_pixel, z, fx_rgb, fy_rgb, cx_rgb, cy_rgb)
+        # transform from rgb to left and right camera coordinates
         coords_left = H_rgb_to_left @ np.array([X, Y, Z, 1])
         coords_right = H_rgb_to_right @ np.array([X, Y, Z, 1])
         points_3d_left = np.array([[coords_left[0], coords_left[1], coords_left[2]]])
+        # project the 3D points to 2D
         points_2d_left, _ = cv2.projectPoints(points_3d_left, rvec, tvec, K_left, dist_coefficients_left)
         # round the coordinates X,Y and append to a list
         x_coord_left.append((np.round(points_2d_left[0][0][0]).astype(int)))
