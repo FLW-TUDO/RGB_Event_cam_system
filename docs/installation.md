@@ -34,9 +34,10 @@ Used for event reconstruction to image frames.
 
 ```bash
 cd ~/event_camera
-# git clone https://github.com/uzh-rpg/e2calib
+git clone https://github.com/uzh-rpg/e2calib
 ```
-
+Follow the instructions in the `e2calib` repository to build and install it.
+https://github.com/uzh-rpg/e2calib
 ### Kalibr toolbox
 Used for multi-camera calibration.
 
