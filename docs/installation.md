@@ -1,3 +1,4 @@
+⬅️ Back to [Home](index.md)
 # Setup (Ubuntu 20.04 + ROS Noetic)
 
 This page provides a clean, end-to-end setup for the RGB + event camera pipeline. Hardware-specific steps (IDS camera) are included, because the project integrates them in the main workflow.

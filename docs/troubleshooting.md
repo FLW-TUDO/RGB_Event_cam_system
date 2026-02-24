@@ -1,3 +1,4 @@
+⬅️ Back to [Home](index.md)
 # Troubleshooting
 
 ## Calibration Issues
