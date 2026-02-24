@@ -1,6 +1,7 @@
+⬅️ Back to [Home](index.md)
 # Setup (Ubuntu 20.04 + ROS Noetic)
 
-This page provides a clean, end-to-end setup for the RGB + event camera pipeline. Hardware-specific steps (IDS camera) are included, because the project integrates them in the main workflow.
+This page provides a clean, end-to-end setup for the RGB + event camera pipeline.
 
 ## 1) System Requirements
 
@@ -16,7 +17,7 @@ Create a ROS workspace and clone this repository into `src/`.
 ```bash
 mkdir -p ~/event_camera_ws/src
 cd ~/event_camera_ws/src
-# git clone <your-repo-url>
+git clone git@github.com:FLW-TUDO/RGB_Event_cam_system.git
 cd ..
 catkin_make
 source devel/setup.bash
@@ -33,9 +34,10 @@ Used for event reconstruction to image frames.
 
 ```bash
 cd ~/event_camera
-# git clone https://github.com/uzh-rpg/e2calib
+git clone https://github.com/uzh-rpg/e2calib
 ```
-
+Follow the instructions in the `e2calib` repository to build and install it.
+https://github.com/uzh-rpg/e2calib
 ### Kalibr toolbox
 Used for multi-camera calibration.
 
@@ -55,8 +57,7 @@ source ~/kalibr_workspace/devel/setup.bash
 
 If you use IDS cameras, install the IDS peak SDK and Python bindings using the guide in:
 
-- `ids_camera_driver/README.md`
-- https://en.ids-imaging.com/download-details/AB02491.html?os=linux_arm&version=v8&bus=64&floatcalc=hard
+ https://en.ids-imaging.com/download-details/AB02491.html
 
 ### 4.1) Install IDS Software Suite (uEye required)
 
@@ -111,15 +112,7 @@ python3 -m pip install ids_peak_afl-2.4.0-cp310-cp310-linux_x86_64.whl
 
 Use the `cp38` wheels for Python 3.8.
 
-## 5) Environment Variables and Paths
-
-Several scripts expect data under a shared root (examples include `/mnt/smbshare/` and `/media/eventcamera/...`).
-
-Decide a single data root (for example, `/mnt/smbshare/`) and use it consistently in:
-
-- `extract_rgb_events_vicon_data_from_bag.py`
-
-## 6) Verify Cameras in ROS
+## 5) Verify Cameras in ROS
 
 Once drivers are running, confirm topics exist (example):
 

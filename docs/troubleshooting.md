@@ -1,3 +1,4 @@
+⬅️ Back to [Home](index.md)
 # Troubleshooting
 
 ## Calibration Issues
@@ -13,8 +14,3 @@
 
 - Ensure the correct workspace is sourced.
 - Verify camera nodes are running before recording bags.
-
-## Dataset Path Errors
-
-- Many scripts assume hardcoded paths (examples: `/mnt/smbshare/`, `/media/eventcamera/...`).
-- Update these in the scripts to match your environment.
