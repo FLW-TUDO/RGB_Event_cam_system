@@ -3,9 +3,6 @@
 This repository provides a complete workflow for operating, calibrating and
 using a synchronized RGB + stereo event camera system under ROS Noetic.
 
-The system enables multi-camera calibration, event reconstruction and dataset
-generation for research and industrial perception applications.
-
 ---
 
 ## System Overview
@@ -21,9 +18,6 @@ Supported functionality:
 
 - Event stream reconstruction using e2calib
 - Multi-camera spatial calibration using Kalibr
-- RGB–Event extrinsic calibration
-- Dataset generation pipeline
-- ROS-based integration for downstream algorithms
 
 ---
 
@@ -50,7 +44,6 @@ Documentation includes:
 - Installation and dependencies
 - ROS workspace setup
 - Camera calibration workflow
-- Data extraction pipeline
 - Troubleshooting guide
 
 ---
