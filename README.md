@@ -44,6 +44,5 @@ Documentation includes:
 - Installation and dependencies
 - ROS workspace setup
 - Camera calibration workflow
-- Troubleshooting guide
 
 ---

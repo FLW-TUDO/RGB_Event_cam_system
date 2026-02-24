@@ -3,17 +3,6 @@
 This documentation describes installation, configuration, calibration and
 data processing workflows for the RGB + stereo event camera system.
 
----
-
-## System Architecture
-
-The system integrates:
-
-- RGB camera for intensity imaging
-- Stereo event cameras for high-temporal-resolution sensing
-- ROS-based synchronization
-- Event reconstruction pipeline
-- Multi-camera calibration
 
 ---
 
@@ -28,10 +17,10 @@ The system integrates:
 
 ## Recommended Workflow
 
-1. Install dependencies and toolchains
+1. Install dependencies
 2. Configure ROS workspaces
 3. Perform event reconstruction
-4. Execute multi-camera calibration
+4. Execute camera calibration
 
 ---
 
